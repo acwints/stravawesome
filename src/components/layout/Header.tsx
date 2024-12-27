@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 
 const COLORS = {
-  DARKER: '#0A0221',
+  DARKER: '#0A0211',
   ACCENT: 'rgba(252, 76, 2, 0.1)', // Strava orange with opacity
 };
 
