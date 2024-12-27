@@ -86,11 +86,16 @@ export async function GET(request: Request) {
     const formattedData = {
       labels: allWeeks,
       datasets: {
-        running: allWeeks.map(week => ({
-          week,
-          running: Math.round(weeklyData.running[week] || 0),
-          walking: Math.round(weeklyData.walking[week] || 0),
-        })),
+        running: allWeeks.map(week => {
+          const running = Math.round(weeklyData.running[week] || 0);
+          const walking = Math.round(weeklyData.walking[week] || 0);
+          return {
+            week,
+            running,
+            walking,
+            total: running + walking
+          };
+        }),
         cycling: allWeeks.map(week => ({
           week,
           cycling: Math.round(weeklyData.cycling[week] || 0),
