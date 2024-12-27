@@ -94,6 +94,11 @@ async function refreshAccessToken(token: any) {
   }
 }
 
+// Add debug logging function
+function debugLog(message: string, data?: any) {
+  console.log(`[NextAuth] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -145,6 +150,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
+      debugLog('signIn callback', { user, account, profile });
       try {
         if (!account || !profile) {
           return false;
@@ -196,26 +202,33 @@ export const authOptions: NextAuthOptions = {
 
         return true;
       } catch (error) {
-        console.error("Error in signIn callback:", error);
+        debugLog('Error in signIn callback', error);
         return false;
       }
     },
     async session({ session, token }): Promise<Session> {
-      if (session.user && token) {
-        session.user.id = token.sub as string;
-        session.user.stravaId = token.stravaId as string;
-        session.user.accessToken = token.accessToken as string;
-        session.user.refreshToken = token.refreshToken as string;
-        session.user.expiresAt = token.expiresAt as number;
+      debugLog('session callback', { session, token });
+      try {
+        if (session.user && token) {
+          session.user.id = token.sub as string;
+          session.user.stravaId = token.stravaId as string;
+          session.user.accessToken = token.accessToken as string;
+          session.user.refreshToken = token.refreshToken as string;
+          session.user.expiresAt = token.expiresAt as number;
 
-        // If token is missing required fields, force re-authentication
-        if (!session.user.accessToken || !session.user.refreshToken) {
-          throw new AuthError('Session expired. Please sign in again.');
+          // If token is missing required fields, force re-authentication
+          if (!session.user.accessToken || !session.user.refreshToken) {
+            throw new AuthError('Session expired. Please sign in again.');
+          }
         }
+        return session;
+      } catch (error) {
+        debugLog('Error in session callback', error);
+        throw error;
       }
-      return session;
     },
     async jwt({ token, account }) {
+      debugLog('jwt callback', { token, account });
       try {
         // Initial sign in
         if (account) {
@@ -241,7 +254,7 @@ export const authOptions: NextAuthOptions = {
 
         return refreshedToken;
       } catch (error) {
-        // Clear the token to force a new sign in
+        debugLog('Error in jwt callback', error);
         return {
           ...token,
           accessToken: undefined,
@@ -250,6 +263,23 @@ export const authOptions: NextAuthOptions = {
         };
       }
     }
+  },
+  events: {
+    async signIn({ user, account, profile, isNewUser }) {
+      debugLog('signIn event', { user, account, profile, isNewUser });
+    },
+    async signOut({ session, token }) {
+      debugLog('signOut event', { session, token });
+    },
+    async createUser({ user }) {
+      debugLog('createUser event', { user });
+    },
+    async linkAccount({ user, account, profile }) {
+      debugLog('linkAccount event', { user, account, profile });
+    },
+    async session({ session, token }) {
+      debugLog('session event', { session, token });
+    },
   },
   pages: {
     signIn: "/auth/signin",
@@ -260,7 +290,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  debug: process.env.NODE_ENV === 'development',
+  debug: true,
 };
 
 const handler = NextAuth(authOptions);
