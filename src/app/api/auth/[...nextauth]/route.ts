@@ -2,6 +2,7 @@ import NextAuth, { DefaultSession, NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import StravaProvider, { StravaProfile } from "next-auth/providers/strava";
+import { AuthError } from "@/lib/api/errors";
 
 // Create a new PrismaClient instance with connection pooling disabled
 const prisma = new PrismaClient({
@@ -24,6 +25,54 @@ declare module "next-auth" {
   }
 }
 
+async function refreshAccessToken(token: any) {
+  try {
+    const response = await fetch('https://www.strava.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: process.env.STRAVA_CLIENT_ID,
+        client_secret: process.env.STRAVA_CLIENT_SECRET,
+        grant_type: 'refresh_token',
+        refresh_token: token.refreshToken,
+      }),
+    });
+
+    const refreshedTokens = await response.json();
+
+    if (!response.ok) {
+      throw new AuthError('Failed to refresh access token');
+    }
+
+    // Update the token in the database
+    await prisma.account.update({
+      where: {
+        provider_providerAccountId: {
+          provider: 'strava',
+          providerAccountId: token.stravaId as string,
+        },
+      },
+      data: {
+        access_token: refreshedTokens.access_token,
+        refresh_token: refreshedTokens.refresh_token,
+        expires_at: refreshedTokens.expires_at,
+      },
+    });
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      refreshToken: refreshedTokens.refresh_token,
+      expiresAt: refreshedTokens.expires_at,
+    };
+  } catch (error) {
+    console.error('Error refreshing access token:', error);
+    
+    // Force re-authentication on refresh token failure
+    throw new AuthError('Session expired. Please sign in again.');
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -33,7 +82,7 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: {
           scope: "read,activity:read_all,profile:read_all",
-          approval_prompt: "force", // Force re-approval to get fresh tokens
+          approval_prompt: "force",
         },
       },
       profile(profile: StravaProfile) {
@@ -131,51 +180,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       // Access token has expired, try to refresh it
-      try {
-        const response = await fetch('https://www.strava.com/oauth/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            client_id: process.env.STRAVA_CLIENT_ID,
-            client_secret: process.env.STRAVA_CLIENT_SECRET,
-            grant_type: 'refresh_token',
-            refresh_token: token.refreshToken,
-          }),
-        });
-
-        const tokens = await response.json();
-
-        if (!response.ok) {
-          console.error('Token refresh failed:', tokens);
-          throw tokens;
-        }
-
-        // Update the token in the database
-        await prisma.account.update({
-          where: {
-            provider_providerAccountId: {
-              provider: 'strava',
-              providerAccountId: token.stravaId as string,
-            },
-          },
-          data: {
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-            expires_at: tokens.expires_at,
-          },
-        });
-
-        return {
-          ...token,
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
-          expiresAt: tokens.expires_at,
-        };
-      } catch (error) {
-        console.error('Error refreshing access token', error);
-        // Return token without error to prevent infinite loops
-        return token;
-      }
+      return refreshAccessToken(token);
     }
   },
   pages: {
@@ -186,7 +191,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  debug: true,
+  debug: process.env.NODE_ENV === 'development',
 };
 
 const handler = NextAuth(authOptions);

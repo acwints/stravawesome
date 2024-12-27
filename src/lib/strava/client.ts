@@ -1,5 +1,5 @@
 import { StravaActivity } from '@/types/strava';
-import { StravaAPIError } from '@/lib/api/errors';
+import { StravaAPIError, AuthError } from '@/lib/api/errors';
 
 export const STRAVA_CONSTANTS = {
   API_BASE: "https://www.strava.com/api/v3",
@@ -14,12 +14,20 @@ export const STRAVA_CONSTANTS = {
     HIKE: 'Hike',
     RIDE: 'Ride',
   } as const,
+  RETRY: {
+    MAX_ATTEMPTS: 3,
+    DELAY_MS: 1000,
+  },
 } as const;
 
 export class StravaClient {
   constructor(private readonly accessToken: string) {}
 
-  private async fetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async fetchWithRetry<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    attempt: number = 1
+  ): Promise<T> {
     try {
       const response = await fetch(`${STRAVA_CONSTANTS.API_BASE}${endpoint}`, {
         ...options,
@@ -32,15 +40,38 @@ export class StravaClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
+        
+        if (response.status === 401) {
+          throw new AuthError('Session expired. Please sign in again.');
+        }
+
         throw new StravaAPIError(error.message || 'Strava API request failed');
       }
 
       return response.json();
     } catch (error) {
+      if (error instanceof AuthError) {
+        throw error;
+      }
+
+      if (
+        attempt < STRAVA_CONSTANTS.RETRY.MAX_ATTEMPTS &&
+        error instanceof StravaAPIError
+      ) {
+        // Wait before retrying
+        await new Promise(resolve => 
+          setTimeout(resolve, STRAVA_CONSTANTS.RETRY.DELAY_MS * attempt)
+        );
+        return this.fetchWithRetry<T>(endpoint, options, attempt + 1);
+      }
+
       if (error instanceof StravaAPIError) {
         throw error;
       }
-      throw new StravaAPIError(error instanceof Error ? error.message : 'Failed to fetch from Strava API');
+
+      throw new StravaAPIError(
+        error instanceof Error ? error.message : 'Failed to fetch from Strava API'
+      );
     }
   }
 
@@ -48,7 +79,7 @@ export class StravaClient {
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year + 1, 0, 1);
 
-    return this.fetch<StravaActivity[]>(
+    return this.fetchWithRetry<StravaActivity[]>(
       `/athlete/activities?per_page=200&after=${Math.floor(startDate.getTime() / 1000)}&before=${Math.floor(endDate.getTime() / 1000)}`
     );
   }
