@@ -1,5 +1,5 @@
 {
-  "buildCommand": "SKIP_TYPESCRIPT=1 next build",
+  "buildCommand": "npx prisma generate && SKIP_TYPESCRIPT=1 next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
