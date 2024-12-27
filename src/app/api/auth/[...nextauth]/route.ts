@@ -1,4 +1,4 @@
-import NextAuth, { DefaultSession, Account, Profile, NextAuthOptions } from "next-auth";
+import NextAuth, { DefaultSession, NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import StravaProvider, { StravaProfile } from "next-auth/providers/strava";
@@ -15,7 +15,7 @@ declare module "next-auth" {
   }
 }
 
-export const authOptions: NextAuthOptions = {
+const config: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     StravaProvider({
@@ -27,7 +27,6 @@ export const authOptions: NextAuthOptions = {
         },
       },
       profile(profile: StravaProfile) {
-        console.log("[next-auth][debug][profile]", { profile });
         return {
           id: profile.id.toString(),
           name: `${profile.firstname} ${profile.lastname}`,
@@ -39,18 +38,13 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      console.log("[next-auth][debug][signIn] Starting signIn callback", { user, account });
-      
       try {
         if (!account || !profile) {
-          console.error("[next-auth][error] Missing account or profile in signIn callback");
           return false;
         }
 
         const stravaProfile = profile as StravaProfile;
         
-        // Create or update user first
-        console.log("[next-auth][debug][signIn] Upserting user");
         const dbUser = await prisma.user.upsert({
           where: { 
             stravaId: stravaProfile.id.toString(),
@@ -66,10 +60,6 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        console.log("[next-auth][debug][signIn] User upserted", { dbUser });
-
-        // Then ensure the account is linked
-        console.log("[next-auth][debug][signIn] Upserting account");
         await prisma.account.upsert({
           where: {
             provider_providerAccountId: {
@@ -97,15 +87,13 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        console.log("[next-auth][debug][signIn] Account upserted");
         return true;
       } catch (error) {
-        console.error("[next-auth][error] Error in signIn callback:", error);
+        console.error("Error in signIn callback:", error);
         return false;
       }
     },
     async session({ session, token }) {
-      console.log("[next-auth][debug][session] Starting session callback", { session, token });
       if (session.user && token) {
         session.user.id = token.sub as string;
         session.user.stravaId = token.stravaId as string;
@@ -114,7 +102,6 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async jwt({ token, account, user }) {
-      console.log("[next-auth][debug][jwt] Starting jwt callback", { token, account, user });
       if (account) {
         token.accessToken = account.access_token;
         token.stravaId = account.providerAccountId;
@@ -134,19 +121,8 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   debug: true,
-  logger: {
-    error(code, ...message) {
-      console.error("[next-auth][error]", code, message);
-    },
-    warn(code, ...message) {
-      console.warn("[next-auth][warn]", code, message);
-    },
-    debug(code, ...message) {
-      console.debug("[next-auth][debug]", code, message);
-    },
-  },
 };
 
-const handler = NextAuth(authOptions);
+const handler = NextAuth(config);
 
 export { handler as GET, handler as POST }; 

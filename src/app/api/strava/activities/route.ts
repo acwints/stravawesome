@@ -140,7 +140,7 @@ export async function GET(request: Request) {
 
     // Get all weeks in the year
     const allWeeks: string[] = [];
-    let currentDate = new Date(year, 0, 1);
+    const currentDate = new Date(year, 0, 1);
     while (currentDate.getFullYear() === year) {
       const monday = getMonday(currentDate);
       allWeeks.push(formatDate(monday));

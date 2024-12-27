@@ -11,9 +11,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  RadialBarChart,
-  RadialBar,
-  Legend,
 } from 'recharts';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
