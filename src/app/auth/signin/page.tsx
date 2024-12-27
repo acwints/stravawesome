@@ -1,10 +1,10 @@
 'use client';
 
-import { signIn, getProviders } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import Image from 'next/image';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 const COLORS = {
   DARK: '#100333',    // Dark purple
@@ -13,9 +13,19 @@ const COLORS = {
 };
 
 export default function SignIn() {
-  const handleStravaSignIn = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
+  
+  const handleStravaSignIn = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    signIn('strava', { callbackUrl: '/' });
+    try {
+      await signIn('strava', {
+        callbackUrl: '/',
+        redirect: true,
+      });
+    } catch (error) {
+      console.error('Sign in error:', error);
+    }
   };
 
   return (
@@ -36,6 +46,15 @@ export default function SignIn() {
             <p className="mt-2 text-strava-light opacity-80">
               Connect your Strava account to access your personalized dashboard
             </p>
+            {error && (
+              <p className="mt-4 text-red-500">
+                {error === 'OAuthSignin' ? 'Error connecting to Strava. Please try again.' :
+                 error === 'OAuthCallback' ? 'Error with Strava callback. Please try again.' :
+                 error === 'OAuthCreateAccount' ? 'Error creating account. Please try again.' :
+                 error === 'AccessDenied' ? 'Access was denied. Please grant the required permissions.' :
+                 'An error occurred. Please try again.'}
+              </p>
+            )}
           </div>
           <form className="mt-12 flex flex-col items-center gap-8" onSubmit={(e) => e.preventDefault()}>
             <button
