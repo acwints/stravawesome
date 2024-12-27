@@ -3,12 +3,5 @@
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["sfo1"],
-  "env": {
-    "NEXTAUTH_URL": "https://stravawesome.com",
-    "STRAVA_CLIENT_ID": "@strava-client-id",
-    "STRAVA_CLIENT_SECRET": "@strava-client-secret",
-    "NEXTAUTH_SECRET": "@nextauth-secret",
-    "DATABASE_URL": "@database-url"
-  }
+  "regions": ["sfo1"]
 } 
