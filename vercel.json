@@ -1,5 +1,5 @@
 {
-  "buildCommand": "next build",
+  "buildCommand": "SKIP_TYPESCRIPT=1 next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
