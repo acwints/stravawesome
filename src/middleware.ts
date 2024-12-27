@@ -26,7 +26,18 @@ export async function middleware(request: NextRequest) {
     pathname === '/auth/error'
   ) {
     debugLog('Skipping auth check for public path');
-    return NextResponse.next();
+    const response = NextResponse.next();
+    
+    // Add security headers
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains'
+    );
+    
+    return response;
   }
 
   try {
@@ -41,6 +52,7 @@ export async function middleware(request: NextRequest) {
     if (!token) {
       debugLog('No token found, redirecting to signin');
       const signInUrl = new URL('/auth/signin', request.url);
+      signInUrl.searchParams.set('callbackUrl', request.url);
       return NextResponse.redirect(signInUrl);
     }
 
@@ -49,15 +61,28 @@ export async function middleware(request: NextRequest) {
     if (expiration && Date.now() / 1000 >= expiration) {
       debugLog('Token expired, redirecting to signin');
       const signInUrl = new URL('/auth/signin', request.url);
+      signInUrl.searchParams.set('callbackUrl', request.url);
       return NextResponse.redirect(signInUrl);
     }
 
     // Allow access to protected routes
     debugLog('Token valid, allowing access');
-    return NextResponse.next();
+    const response = NextResponse.next();
+    
+    // Add security headers
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains'
+    );
+    
+    return response;
   } catch (error) {
     debugLog('Error in middleware:', error);
     const signInUrl = new URL('/auth/signin', request.url);
+    signInUrl.searchParams.set('callbackUrl', request.url);
     return NextResponse.redirect(signInUrl);
   }
 }
