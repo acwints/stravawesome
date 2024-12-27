@@ -12,9 +12,32 @@ const COLORS = {
   CARD_BG: 'rgba(26, 26, 31, 0.7)', // Semi-transparent dark for cards
 };
 
+function debugLog(message: string, data?: any) {
+  console.log(`[SignIn] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+}
+
 export default function SignIn() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
+
+  const handleStravaSignIn = async () => {
+    debugLog('Initiating Strava sign-in', { callbackUrl });
+    try {
+      const result = await signIn('strava', {
+        callbackUrl,
+        redirect: false,
+      });
+      
+      debugLog('Sign-in result:', result);
+      
+      if (result?.error) {
+        console.error('Sign-in error:', result.error);
+      }
+    } catch (error) {
+      debugLog('Sign-in error:', error);
+    }
+  };
 
   return (
     <div style={{ 
@@ -45,8 +68,8 @@ export default function SignIn() {
             )}
           </div>
           <div className="mt-12 flex flex-col items-center gap-8">
-            <a
-              href="/api/auth/signin/strava"
+            <button
+              onClick={handleStravaSignIn}
               className="w-full flex justify-center items-center hover:opacity-90 transition-all transform hover:scale-105"
             >
               <Image
@@ -57,7 +80,7 @@ export default function SignIn() {
                 priority
                 className="max-w-[193px]"
               />
-            </a>
+            </button>
             
             <div className="opacity-80 hover:opacity-100 transition-opacity">
               <Image
