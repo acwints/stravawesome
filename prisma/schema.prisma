@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  username      String    @unique
+  image         String?
+  sessionToken  String?   @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  stravaProfile StravaProfile?
+  activities    Activity[]
+}
+
+model StravaProfile {
+  id              String   @id
+  userId          String   @unique
+  accessToken     String
+  refreshToken    String
+  expiresAt       DateTime
+  athleteId       String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+}
+
+model Activity {
+  id          String   @id
+  userId      String
+  type        String
+  name        String
+  distance    Float
+  movingTime  Int
+  totalTime   Int
+  startDate   DateTime
+  timezone    String
+  startLat    Float?
+  startLng    Float?
+  endLat      Float?
+  endLng      Float?
+  polyline    String?
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // e.g., "distance", "elevation", "time"
+  target      Float
+  timeframe   String   // e.g., "weekly", "monthly", "yearly"
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  stripePriceId        String?
+  stripeCurrentPeriodEnd DateTime?
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+} 
