@@ -25,7 +25,7 @@ export default function Header() {
           <Link href="/" className="relative group">
             <Image 
               src="/images/StravAwesome.png" 
-              alt="Stravawesome" 
+              alt="StravAwesome" 
               width={280}
               height={120}
               className="mr-4 transition-transform duration-300 group-hover:scale-105"

@@ -1,4 +1,4 @@
-# Stravawesome
+# StravAwesome
 
 A powerful dashboard for Strava athletes with custom analytics and goal-setting capabilities.
 

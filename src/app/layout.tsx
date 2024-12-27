@@ -5,7 +5,7 @@ import { NextAuthProvider } from "@/components/providers/auth-provider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Stravawesome",
+  title: "StravAwesome",
   description: "Your personal Strava dashboard and goal tracker",
 };
 
