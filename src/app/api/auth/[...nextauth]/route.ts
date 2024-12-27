@@ -101,10 +101,36 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.STRAVA_CLIENT_ID!,
       clientSecret: process.env.STRAVA_CLIENT_SECRET!,
       authorization: {
+        url: "https://www.strava.com/oauth/authorize",
         params: {
-          scope: "read,activity:read_all,profile:read_all",
-          approval_prompt: "force",
+          scope: "read,activity:read_all,profile:read_all,profile:write,activity:write",
+          approval_prompt: "auto",
           response_type: "code",
+        },
+      },
+      token: {
+        url: "https://www.strava.com/oauth/token",
+        async request({ client, params, checks, provider }) {
+          const response = await client.oauthCallback(
+            provider.callbackUrl,
+            params,
+            checks,
+            {
+              exchangeBody: {
+                client_id: provider.clientId,
+                client_secret: provider.clientSecret,
+                grant_type: "authorization_code",
+              },
+            }
+          );
+          return { tokens: response };
+        },
+      },
+      userinfo: {
+        url: "https://www.strava.com/api/v3/athlete",
+        async request({ tokens, client }) {
+          const profile = await client.userinfo(tokens.access_token as string);
+          return profile;
         },
       },
       profile(profile: StravaProfile) {
@@ -113,7 +139,7 @@ export const authOptions: NextAuthOptions = {
           name: `${profile.firstname} ${profile.lastname}`,
           email: undefined,
           image: profile.profile,
-        }
+        };
       },
     }),
   ],
