@@ -1,6 +1,5 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../auth/[...nextauth]/route";
 
 const STRAVA_API_BASE = "https://www.strava.com/api/v3";
 const METERS_TO_MILES = 0.000621371;
@@ -95,7 +94,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
     
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     
     if (!session?.user?.accessToken) {
       return NextResponse.json(
