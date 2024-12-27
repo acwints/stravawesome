@@ -1,9 +1,10 @@
 'use client';
 
-import { signIn } from "next-auth/react";
+import { signIn, getProviders } from "next-auth/react";
 import Image from 'next/image';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { useEffect, useState } from 'react';
 
 const COLORS = {
   DARK: '#100333',    // Dark purple
@@ -12,15 +13,9 @@ const COLORS = {
 };
 
 export default function SignIn() {
-  const handleSignIn = async () => {
-    try {
-      await signIn("strava", { 
-        callbackUrl: "/",
-        redirect: true 
-      });
-    } catch (error) {
-      console.error("Sign in error:", error);
-    }
+  const handleStravaSignIn = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    signIn('strava', { callbackUrl: '/' });
   };
 
   return (
@@ -42,9 +37,10 @@ export default function SignIn() {
               Connect your Strava account to access your personalized dashboard
             </p>
           </div>
-          <div className="mt-12 flex flex-col items-center gap-8">
+          <form className="mt-12 flex flex-col items-center gap-8" onSubmit={(e) => e.preventDefault()}>
             <button
-              onClick={handleSignIn}
+              type="button"
+              onClick={handleStravaSignIn}
               className="w-full flex justify-center items-center hover:opacity-90 transition-all transform hover:scale-105"
             >
               <Image
@@ -66,7 +62,7 @@ export default function SignIn() {
                 className="max-w-[193px]"
               />
             </div>
-          </div>
+          </form>
         </div>
       </div>
       <Footer />
