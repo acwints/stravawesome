@@ -2,8 +2,8 @@
 
 import { signIn } from "next-auth/react";
 import Image from 'next/image';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
 
 const COLORS = {
   DARK: '#100333',    // Dark purple
@@ -37,7 +37,7 @@ export default function SignIn() {
               className="w-full flex justify-center items-center hover:opacity-90 transition-all transform hover:scale-105"
             >
               <Image
-                src="/1.1 connect with strava/btn_strava_connectwith_orange.png"
+                src="/strava-assets/1.1 connect with strava/btn_strava_connectwith_orange/btn_strava_connectwith_orange.svg"
                 alt="Connect with Strava"
                 width={193}
                 height={48}
@@ -48,7 +48,7 @@ export default function SignIn() {
             
             <div className="opacity-80 hover:opacity-100 transition-opacity">
               <Image
-                src="/1.2 strava api logos/powered by Strava/pwrdBy_strava_white/api_logo_pwrdBy_strava_horiz_white.svg"
+                src="/strava-assets/1.2 strava api logos/powered by Strava/pwrdBy_strava_white/api_logo_pwrdBy_strava_horiz_white.svg"
                 alt="Powered by Strava"
                 width={193}
                 height={48}

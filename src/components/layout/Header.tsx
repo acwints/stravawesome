@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 
 const COLORS = {
@@ -21,16 +22,16 @@ export default function Header() {
     >
       <div className="container mx-auto flex justify-between items-center h-full">
         <div className="flex items-center">
-          <div className="relative group">
+          <Link href="/" className="relative group">
             <Image 
-              src="/stravawesome.png" 
+              src="/images/StravAwesome.png" 
               alt="Stravawesome" 
               width={280}
               height={120}
               className="mr-4 transition-transform duration-300 group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
-          </div>
+          </Link>
         </div>
         
         {session?.user && (
