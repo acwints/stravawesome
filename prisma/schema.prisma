@@ -37,14 +37,19 @@ model Session {
 model User {
   id            String    @id @default(cuid())
   name          String
-  email         String    @unique
-  username      String    @unique
+  email         String?   @unique
+  username      String?   @unique
   image         String?
   sessionToken  String?   @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  stravaId      String?   @unique
   stravaProfile StravaProfile?
   activities    Activity[]
+  accounts      Account[]
+  sessions      Session[]
+  goals         Goal[]
+  subscription  Subscription?
 }
 
 model StravaProfile {
