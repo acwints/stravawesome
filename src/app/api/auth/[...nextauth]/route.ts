@@ -3,7 +3,14 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import StravaProvider, { StravaProfile } from "next-auth/providers/strava";
 
-const prisma = new PrismaClient();
+// Create a new PrismaClient instance with connection pooling disabled
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.POSTGRES_URL_NON_POOLING
+    }
+  }
+});
 
 declare module "next-auth" {
   interface Session extends DefaultSession {
@@ -26,6 +33,7 @@ const config: NextAuthOptions = {
       authorization: {
         params: {
           scope: "read,activity:read_all,profile:read_all",
+          approval_prompt: "force", // Force re-approval to get fresh tokens
         },
       },
       profile(profile: StravaProfile) {
@@ -55,40 +63,39 @@ const config: NextAuthOptions = {
           update: {
             name: user.name,
             image: user.image,
-            accounts: {
-              update: {
-                where: {
-                  provider_providerAccountId: {
-                    provider: 'strava',
-                    providerAccountId: stravaProfile.id.toString(),
-                  },
-                },
-                data: {
-                  access_token: account.access_token,
-                  refresh_token: account.refresh_token,
-                  expires_at: account.expires_at,
-                  scope: account.scope,
-                  token_type: account.token_type,
-                },
-              },
-            },
           },
           create: {
             name: user.name,
             image: user.image,
             stravaId: stravaProfile.id.toString(),
-            accounts: {
-              create: {
-                type: account.type,
-                provider: account.provider,
-                providerAccountId: account.providerAccountId,
-                access_token: account.access_token,
-                refresh_token: account.refresh_token,
-                expires_at: account.expires_at,
-                scope: account.scope,
-                token_type: account.token_type,
-              },
+          },
+        });
+
+        // Store the account separately to avoid nested upsert issues
+        await prisma.account.upsert({
+          where: {
+            provider_providerAccountId: {
+              provider: 'strava',
+              providerAccountId: stravaProfile.id.toString(),
             },
+          },
+          update: {
+            access_token: account.access_token,
+            refresh_token: account.refresh_token,
+            expires_at: account.expires_at,
+            scope: account.scope,
+            token_type: account.token_type,
+          },
+          create: {
+            userId: user.id,
+            type: account.type,
+            provider: account.provider,
+            providerAccountId: account.providerAccountId,
+            access_token: account.access_token,
+            refresh_token: account.refresh_token,
+            expires_at: account.expires_at,
+            scope: account.scope,
+            token_type: account.token_type,
           },
         });
 
@@ -108,7 +115,7 @@ const config: NextAuthOptions = {
       }
       return session;
     },
-    async jwt({ token, account, trigger, session }) {
+    async jwt({ token, account }) {
       // Initial sign in
       if (account) {
         token.accessToken = account.access_token;
@@ -138,7 +145,10 @@ const config: NextAuthOptions = {
 
         const tokens = await response.json();
 
-        if (!response.ok) throw tokens;
+        if (!response.ok) {
+          console.error('Token refresh failed:', tokens);
+          throw tokens;
+        }
 
         // Update the token in the database
         await prisma.account.update({
@@ -163,7 +173,8 @@ const config: NextAuthOptions = {
         };
       } catch (error) {
         console.error('Error refreshing access token', error);
-        return { ...token, error: 'RefreshAccessTokenError' };
+        // Return token without error to prevent infinite loops
+        return token;
       }
     }
   },
