@@ -12,6 +12,17 @@ const COLORS = {
 };
 
 export default function SignIn() {
+  const handleSignIn = async () => {
+    try {
+      await signIn("strava", { 
+        callbackUrl: "/",
+        redirect: true 
+      });
+    } catch (error) {
+      console.error("Sign in error:", error);
+    }
+  };
+
   return (
     <div style={{ 
       background: `linear-gradient(135deg, ${COLORS.DARKER} 0%, ${COLORS.DARK} 100%)`,
@@ -33,7 +44,7 @@ export default function SignIn() {
           </div>
           <div className="mt-12 flex flex-col items-center gap-8">
             <button
-              onClick={() => signIn("strava", { callbackUrl: "/" })}
+              onClick={handleSignIn}
               className="w-full flex justify-center items-center hover:opacity-90 transition-all transform hover:scale-105"
             >
               <Image
