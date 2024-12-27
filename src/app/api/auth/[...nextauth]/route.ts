@@ -24,7 +24,7 @@ declare module "next-auth" {
   }
 }
 
-const config: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     StravaProvider({
@@ -189,6 +189,6 @@ const config: NextAuthOptions = {
   debug: true,
 };
 
-const handler = NextAuth(config);
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST }; 
