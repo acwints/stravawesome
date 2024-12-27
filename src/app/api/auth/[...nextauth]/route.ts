@@ -104,6 +104,7 @@ export const authOptions: NextAuthOptions = {
         params: {
           scope: "read,activity:read_all,profile:read_all",
           approval_prompt: "force",
+          response_type: "code",
         },
       },
       profile(profile: StravaProfile) {
@@ -227,6 +228,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/auth/signin",
     error: "/auth/error",
+    signOut: "/",
   },
   session: {
     strategy: "jwt",
