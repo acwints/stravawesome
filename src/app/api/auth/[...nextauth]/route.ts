@@ -37,62 +37,6 @@ const config: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
-      try {
-        if (!account || !profile) {
-          return false;
-        }
-
-        const stravaProfile = profile as StravaProfile;
-        
-        const dbUser = await prisma.user.upsert({
-          where: { 
-            stravaId: stravaProfile.id.toString(),
-          },
-          update: {
-            name: user.name,
-            image: user.image,
-          },
-          create: {
-            name: user.name,
-            image: user.image,
-            stravaId: stravaProfile.id.toString(),
-          },
-        });
-
-        await prisma.account.upsert({
-          where: {
-            provider_providerAccountId: {
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-            },
-          },
-          update: {
-            access_token: account.access_token,
-            refresh_token: account.refresh_token,
-            expires_at: account.expires_at,
-            scope: account.scope,
-            token_type: account.token_type,
-          },
-          create: {
-            userId: dbUser.id,
-            type: account.type,
-            provider: account.provider,
-            providerAccountId: account.providerAccountId,
-            access_token: account.access_token,
-            refresh_token: account.refresh_token,
-            expires_at: account.expires_at,
-            scope: account.scope,
-            token_type: account.token_type,
-          },
-        });
-
-        return true;
-      } catch (error) {
-        console.error("Error in signIn callback:", error);
-        return false;
-      }
-    },
     async session({ session, token }) {
       if (session.user && token) {
         session.user.id = token.sub as string;
@@ -101,13 +45,10 @@ const config: NextAuthOptions = {
       }
       return session;
     },
-    async jwt({ token, account, user }) {
+    async jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token;
         token.stravaId = account.providerAccountId;
-      }
-      if (user) {
-        token.id = user.id;
       }
       return token;
     }
