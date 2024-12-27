@@ -25,7 +25,7 @@ export default function SignIn() {
         >
           <div className="text-center">
             <h2 className="mt-6 text-3xl font-bold text-strava-light">
-              Welcome to Stravawesome
+              Welcome to StravAwesome
             </h2>
             <p className="mt-2 text-strava-light opacity-80">
               Connect your Strava account to access your personalized dashboard

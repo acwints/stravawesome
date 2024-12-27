@@ -24,7 +24,7 @@ export default function LandingPage() {
           style={{ background: COLORS.CARD_BG }}
         >
           <h1 className="text-5xl font-bold text-strava-light">
-            Welcome to Stravawesome
+            Welcome to StravAwesome
           </h1>
           <p className="text-xl text-strava-light opacity-80 max-w-lg mx-auto">
             Your personal Strava dashboard with advanced analytics and beautiful visualizations
