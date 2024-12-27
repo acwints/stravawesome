@@ -1,17 +1,33 @@
-import NextAuth, { DefaultSession, NextAuthOptions } from "next-auth";
+import NextAuth, { DefaultSession, NextAuthOptions, Session } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import StravaProvider, { StravaProfile } from "next-auth/providers/strava";
 import { AuthError } from "@/lib/api/errors";
 
-// Create a new PrismaClient instance with connection pooling disabled
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.POSTGRES_URL_NON_POOLING
+// Create a singleton instance of PrismaClient
+let prisma: PrismaClient;
+
+if (process.env.NODE_ENV === 'production') {
+  prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.POSTGRES_URL_NON_POOLING
+      }
     }
+  });
+} else {
+  // In development, use a global variable to prevent multiple instances
+  if (!(global as any).prisma) {
+    (global as any).prisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: process.env.POSTGRES_URL_NON_POOLING
+        }
+      }
+    });
   }
-});
+  prisma = (global as any).prisma;
+}
 
 declare module "next-auth" {
   interface Session extends DefaultSession {
@@ -68,8 +84,13 @@ async function refreshAccessToken(token: any) {
   } catch (error) {
     console.error('Error refreshing access token:', error);
     
-    // Force re-authentication on refresh token failure
-    throw new AuthError('Session expired. Please sign in again.');
+    // Clear the token to force a new sign in
+    return {
+      ...token,
+      accessToken: undefined,
+      refreshToken: undefined,
+      expiresAt: undefined,
+    };
   }
 }
 
@@ -104,7 +125,6 @@ export const authOptions: NextAuthOptions = {
 
         const stravaProfile = profile as StravaProfile;
         
-        // Store the user and their tokens
         await prisma.user.upsert({
           where: { 
             stravaId: stravaProfile.id.toString(),
@@ -120,7 +140,6 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        // Store the account separately to avoid nested upsert issues
         await prisma.account.upsert({
           where: {
             provider_providerAccountId: {
@@ -154,33 +173,55 @@ export const authOptions: NextAuthOptions = {
         return false;
       }
     },
-    async session({ session, token }) {
+    async session({ session, token }): Promise<Session> {
       if (session.user && token) {
         session.user.id = token.sub as string;
         session.user.stravaId = token.stravaId as string;
         session.user.accessToken = token.accessToken as string;
         session.user.refreshToken = token.refreshToken as string;
         session.user.expiresAt = token.expiresAt as number;
+
+        // If token is missing required fields, force re-authentication
+        if (!session.user.accessToken || !session.user.refreshToken) {
+          throw new AuthError('Session expired. Please sign in again.');
+        }
       }
       return session;
     },
     async jwt({ token, account }) {
-      // Initial sign in
-      if (account) {
-        token.accessToken = account.access_token;
-        token.refreshToken = account.refresh_token;
-        token.expiresAt = account.expires_at;
-        token.stravaId = account.providerAccountId;
-        return token;
-      }
+      try {
+        // Initial sign in
+        if (account) {
+          token.accessToken = account.access_token;
+          token.refreshToken = account.refresh_token;
+          token.expiresAt = account.expires_at;
+          token.stravaId = account.providerAccountId;
+          return token;
+        }
 
-      // Return previous token if the access token has not expired yet
-      if (Date.now() < (token.expiresAt as number * 1000)) {
-        return token;
-      }
+        // Return previous token if the access token has not expired yet
+        if (Date.now() < (token.expiresAt as number * 1000)) {
+          return token;
+        }
 
-      // Access token has expired, try to refresh it
-      return refreshAccessToken(token);
+        // Access token has expired, try to refresh it
+        const refreshedToken = await refreshAccessToken(token);
+        
+        // If refresh failed, force re-authentication
+        if (!refreshedToken.accessToken) {
+          throw new AuthError('Session expired. Please sign in again.');
+        }
+
+        return refreshedToken;
+      } catch (error) {
+        // Clear the token to force a new sign in
+        return {
+          ...token,
+          accessToken: undefined,
+          refreshToken: undefined,
+          expiresAt: undefined,
+        };
+      }
     }
   },
   pages: {
