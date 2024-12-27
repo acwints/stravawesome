@@ -224,7 +224,7 @@ function Charts({ data, year, setYear }: {
           <h2 className="text-xl font-semibold text-strava-light">Weekly Running & Walking Distance</h2>
           <div className="text-strava-light">
             <span className="text-sm">Total: </span>
-            <span className="text-2xl font-bold text-strava-orange">{totalRunning}</span>
+            <span className="text-2xl font-bold text-strava-orange">{totalRunning + totalWalking}</span>
             <span className="text-sm ml-1">miles</span>
           </div>
         </div>
