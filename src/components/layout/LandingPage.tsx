@@ -39,7 +39,7 @@ export default function LandingPage() {
             
             <div className="opacity-80 hover:opacity-100 transition-opacity mt-4">
               <Image
-                src="/1.2 strava api logos/powered by Strava/pwrdBy_strava_white/api_logo_pwrdBy_strava_horiz_white.svg"
+                src="/strava-assets/1.2 strava api logos/powered by Strava/pwrdBy_strava_white/api_logo_pwrdBy_strava_horiz_white.svg"
                 alt="Powered by Strava"
                 width={193}
                 height={48}

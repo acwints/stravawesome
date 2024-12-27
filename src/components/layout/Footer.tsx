@@ -20,7 +20,7 @@ export default function Footer() {
         <div className="flex flex-col items-center justify-center gap-6">
           <div>
             <Image
-              src="/1.2 strava api logos/powered by Strava/pwrdBy_strava_white/api_logo_pwrdBy_strava_horiz_white.svg"
+              src="/strava-assets/1.2 strava api logos/powered by Strava/pwrdBy_strava_white/api_logo_pwrdBy_strava_horiz_white.svg"
               alt="Powered by Strava"
               width={193}
               height={48}
@@ -40,7 +40,7 @@ export default function Footer() {
             </a>
             <span className="text-white">•</span>
             <a 
-              href="https://github.com/yourusername/stravawesome" 
+              href="https://github.com/andrewwinter/stravawesome" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-white hover:text-strava-orange transition-colors text-sm"

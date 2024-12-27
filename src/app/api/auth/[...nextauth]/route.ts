@@ -1,7 +1,9 @@
 import NextAuth, { DefaultSession, Account, Profile, NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
 import StravaProvider, { StravaProfile } from "next-auth/providers/strava";
+
+const prisma = new PrismaClient();
 
 declare module "next-auth" {
   interface Session extends DefaultSession {
