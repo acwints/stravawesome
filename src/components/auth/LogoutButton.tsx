@@ -5,10 +5,13 @@ import { signOut } from 'next-auth/react'
 export default function LogoutButton() {
   const handleLogout = async () => {
     try {
+      // Clear all cookies and session data
       await signOut({ 
-        callbackUrl: '/',
-        redirect: true,
+        redirect: false
       })
+      
+      // Force a hard redirect to clear any cached state
+      window.location.href = '/'
     } catch (error) {
       console.error('Logout failed:', error)
       // Force reload as fallback
