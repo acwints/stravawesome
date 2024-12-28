@@ -12,7 +12,7 @@ const COLORS = {
 };
 
 export default function Header() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -34,6 +34,15 @@ export default function Header() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Close menu when session changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [status]);
+
+  if (status === 'loading') {
+    return null;
+  }
 
   return (
     <nav 
@@ -57,7 +66,7 @@ export default function Header() {
           </Link>
         </div>
         
-        {session?.user && (
+        {status === 'authenticated' && session?.user && (
           <div className="flex items-center gap-6">
             <span className="text-strava-light text-xl font-medium tracking-wide">
               {session.user.name}
