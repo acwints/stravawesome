@@ -163,12 +163,12 @@ export const authOptions: NextAuthOptions = {
             stravaId: stravaProfile.id.toString(),
           },
           update: {
-            name: user.name,
-            image: user.image,
+            name: user.name || undefined,
+            image: user.image || undefined,
           },
           create: {
-            name: user.name,
-            image: user.image,
+            name: user.name || '',
+            image: user.image || '',
             stravaId: stravaProfile.id.toString(),
           },
         });
