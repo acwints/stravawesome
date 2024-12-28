@@ -210,15 +210,13 @@ export const authOptions: NextAuthOptions = {
       debugLog('session callback', { session, token });
       try {
         if (session.user && token) {
-          session.user.id = token.sub as string;
-          session.user.stravaId = token.stravaId as string;
-          session.user.accessToken = token.accessToken as string;
-          session.user.refreshToken = token.refreshToken as string;
-          session.user.expiresAt = token.expiresAt as number;
-
-          // If token is missing required fields, force re-authentication
-          if (!session.user.accessToken || !session.user.refreshToken) {
-            throw new AuthError('Session expired. Please sign in again.');
+          // Only set session data if token has required fields
+          if (token.accessToken && token.refreshToken) {
+            session.user.id = token.sub as string;
+            session.user.stravaId = token.stravaId as string;
+            session.user.accessToken = token.accessToken as string;
+            session.user.refreshToken = token.refreshToken as string;
+            session.user.expiresAt = token.expiresAt as number;
           }
         }
         return session;
@@ -248,19 +246,19 @@ export const authOptions: NextAuthOptions = {
         if (token.refreshToken) {
           const refreshedToken = await refreshAccessToken(token);
           
-          // If refresh failed, force re-authentication
+          // If refresh failed, clear token data
           if (!refreshedToken.accessToken) {
-            return {};
+            return { ...token, accessToken: undefined, refreshToken: undefined, expiresAt: undefined };
           }
 
           return refreshedToken;
         }
 
-        // No refresh token, return empty token
-        return {};
+        // No refresh token, clear token data
+        return { ...token, accessToken: undefined, refreshToken: undefined, expiresAt: undefined };
       } catch (error) {
         debugLog('Error in jwt callback', error);
-        return {};
+        return { ...token, accessToken: undefined, refreshToken: undefined, expiresAt: undefined };
       }
     }
   },
