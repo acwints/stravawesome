@@ -52,6 +52,27 @@ The application uses:
 - Prisma for database management
 - TailwindCSS for styling
 
+## Security Considerations
+
+### Environment Variables
+- Never commit `.env` files to version control
+- Use `.env.example` as a template (safe to commit)
+- Keep all sensitive credentials in `.env.local` for development
+- Store production credentials securely in your deployment platform
+
+### Git Security
+The repository is configured to ignore sensitive files:
+```gitignore
+.env
+.env.*
+!.env.example
+```
+
+If sensitive files are accidentally committed:
+1. Remove them from git history using `git filter-branch`
+2. Force push the changes
+3. Rotate all exposed credentials immediately
+
 ## Deployment
 
 ### Prerequisites
@@ -67,21 +88,24 @@ The application uses:
    - Create a new application
    - Note down the Client ID and Client Secret
 
-### Deployment Steps
+### Automated Deployment
 
-1. Push your code to GitHub
+The project is configured for continuous deployment:
 
-2. Connect your repository to Vercel:
-   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
-   - Click "New Project"
-   - Import your GitHub repository
-   - Configure the project:
-     - Framework Preset: Next.js
-     - Build Command: `npx prisma generate && next build`
-     - Install Command: `npm install`
-     - Output Directory: `.next`
+1. **GitHub Integration**:
+   - Push changes to the main branch
+   - Vercel automatically detects changes
+   - Builds and deploys automatically
 
-3. Set up environment variables in Vercel:
+2. **Build Process**:
+   ```bash
+   # These run automatically on Vercel
+   npx prisma generate
+   next build
+   ```
+
+3. **Environment Variables**:
+   Configure in Vercel dashboard:
    ```
    NEXTAUTH_URL=https://your-domain.com
    NEXTAUTH_SECRET=your-secret-key
@@ -94,16 +118,7 @@ The application uses:
    STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
    ```
 
-4. Set up the database:
-   ```bash
-   # Generate Prisma client
-   npx prisma generate
-   
-   # Push the schema to your database
-   npx prisma db push
-   ```
-
-5. Configure OAuth Redirect URIs:
+4. **Strava OAuth Configuration**:
    - Go to your Strava API settings
    - Add the following redirect URIs:
      ```
@@ -111,27 +126,27 @@ The application uses:
      https://your-domain.com/api/auth/signin/strava
      ```
 
-6. Deploy:
-   - Commit and push your changes to GitHub
-   - Vercel will automatically deploy your application
-   - Your app will be available at `https://your-domain.com`
+### Post-Deployment Verification
 
-### Post-Deployment
+1. **Monitor Deployment**:
+   - Check Vercel dashboard for deployment status
+   - Review build logs for any issues
+   - Verify environment variables are set
 
-1. Test the authentication flow:
-   - Visit your deployed site
-   - Try logging in with Strava
-   - Verify that the OAuth flow works correctly
+2. **Test Authentication**:
+   - Verify Strava OAuth flow
+   - Test login/logout functionality
+   - Check user session handling
 
-2. Monitor your application:
-   - Check Vercel analytics for performance metrics
-   - Monitor database usage in Supabase/your database provider
-   - Set up error tracking (e.g., Sentry) if needed
+3. **Database Verification**:
+   - Confirm database connections
+   - Test data retrieval and storage
+   - Monitor query performance
 
-3. Set up custom domain (optional):
-   - Go to Vercel project settings
-   - Add your custom domain
-   - Configure DNS settings as instructed
+4. **Error Monitoring**:
+   - Check application logs
+   - Monitor API responses
+   - Track authentication flows
 
 ## License
 
