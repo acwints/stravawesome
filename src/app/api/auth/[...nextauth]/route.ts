@@ -270,6 +270,18 @@ export const authOptions: NextAuthOptions = {
     },
     async signOut({ session, token }) {
       debugLog('signOut event', { session, token });
+      // Clear session data from database
+      try {
+        if (session?.user?.id) {
+          await prisma.session.deleteMany({
+            where: {
+              userId: session.user.id,
+            },
+          });
+        }
+      } catch (error) {
+        debugLog('Error clearing session data:', error);
+      }
     },
     async createUser({ user }) {
       debugLog('createUser event', { user });
@@ -284,7 +296,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/auth/signin",
     error: "/auth/error",
-    signOut: "/",
+    signOut: "/auth/signin",
   },
   session: {
     strategy: "jwt",
