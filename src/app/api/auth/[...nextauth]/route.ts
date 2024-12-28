@@ -240,27 +240,27 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Return previous token if the access token has not expired yet
-        if (Date.now() < (token.expiresAt as number * 1000)) {
+        if (token.accessToken && Date.now() < (token.expiresAt as number * 1000)) {
           return token;
         }
 
-        // Access token has expired, try to refresh it
-        const refreshedToken = await refreshAccessToken(token);
-        
-        // If refresh failed, force re-authentication
-        if (!refreshedToken.accessToken) {
-          throw new AuthError('Session expired. Please sign in again.');
+        // Access token has expired or missing, try to refresh it
+        if (token.refreshToken) {
+          const refreshedToken = await refreshAccessToken(token);
+          
+          // If refresh failed, force re-authentication
+          if (!refreshedToken.accessToken) {
+            return {};
+          }
+
+          return refreshedToken;
         }
 
-        return refreshedToken;
+        // No refresh token, return empty token
+        return {};
       } catch (error) {
         debugLog('Error in jwt callback', error);
-        return {
-          ...token,
-          accessToken: undefined,
-          refreshToken: undefined,
-          expiresAt: undefined,
-        };
+        return {};
       }
     }
   },
@@ -270,12 +270,23 @@ export const authOptions: NextAuthOptions = {
     },
     async signOut({ session, token }) {
       debugLog('signOut event', { session, token });
-      // Clear session data from database
       try {
+        // Clear all sessions for the user
         if (session?.user?.id) {
           await prisma.session.deleteMany({
             where: {
               userId: session.user.id,
+            },
+          });
+          // Clear token from database
+          await prisma.account.updateMany({
+            where: {
+              userId: session.user.id,
+            },
+            data: {
+              access_token: null,
+              refresh_token: null,
+              expires_at: null,
             },
           });
         }
