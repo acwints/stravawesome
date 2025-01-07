@@ -9,6 +9,7 @@ export interface StravaActivity {
   sport_type: string;
   start_date: string;
   start_date_local: string;
+  timezone: string;
   average_speed: number;
   max_speed: number;
   average_heartrate?: number;

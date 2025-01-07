@@ -1,33 +1,8 @@
 import NextAuth, { DefaultSession, NextAuthOptions, Session } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { PrismaClient } from "@prisma/client";
 import StravaProvider, { StravaProfile } from "next-auth/providers/strava";
 import { AuthError } from "@/lib/api/errors";
-
-// Create a singleton instance of PrismaClient
-let prisma: PrismaClient;
-
-if (process.env.NODE_ENV === 'production') {
-  prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.POSTGRES_URL_NON_POOLING
-      }
-    }
-  });
-} else {
-  // In development, use a global variable to prevent multiple instances
-  if (!(global as any).prisma) {
-    (global as any).prisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: process.env.POSTGRES_URL_NON_POOLING
-        }
-      }
-    });
-  }
-  prisma = (global as any).prisma;
-}
+import { prisma } from "@/lib/db/prisma";
 
 declare module "next-auth" {
   interface Session extends DefaultSession {
