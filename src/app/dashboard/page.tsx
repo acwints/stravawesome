@@ -8,6 +8,7 @@ import StravaConnect from '@/components/StravaConnect';
 import GoalsProgress from '@/components/GoalsProgress';
 import RecentActivities from '@/components/RecentActivities';
 import WeeklyChart from '@/components/WeeklyChart';
+import { Session } from "next-auth";
 
 function LoadingSpinner() {
   return (
@@ -17,7 +18,7 @@ function LoadingSpinner() {
   );
 }
 
-function DashboardContent({ session }: { session: any }) {
+function DashboardContent({ session }: { session: Session }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
