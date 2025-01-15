@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -34,12 +34,12 @@ export default function Home() {
             Connect your Strava account to analyze your activities, track your progress, and gain deeper insights into your training.
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Link
-              href="/auth/signin"
+            <button
+              onClick={() => signIn('google')}
               className="rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             >
-              Get started
-            </Link>
+              Sign in with Google
+            </button>
             <Link href="/about" className="text-sm font-semibold leading-6 text-gray-900">
               Learn more <span aria-hidden="true">→</span>
             </Link>

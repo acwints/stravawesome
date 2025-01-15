@@ -74,9 +74,9 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={() => signIn('google')}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                className="rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
-                Sign In
+                Sign in with Google
               </button>
             )}
           </div>

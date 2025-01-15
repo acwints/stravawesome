@@ -8,9 +8,17 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    const error = searchParams.get('error');
 
     console.log('Session:', session);
     console.log('Code:', code);
+    console.log('State:', state);
+
+    if (error) {
+      console.error('Strava authorization error:', error);
+      return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=strava_denied`);
+    }
 
     if (!session?.user?.id) {
       console.error('No session or user ID found');
@@ -20,6 +28,11 @@ export async function GET(request: NextRequest) {
     if (!code) {
       console.error('No authorization code found');
       return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=no_code`);
+    }
+
+    if (!state) {
+      console.error('No state parameter found');
+      return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=invalid_state`);
     }
 
     // Exchange code for token
@@ -36,12 +49,17 @@ export async function GET(request: NextRequest) {
       }),
     });
 
+    if (!tokenResponse.ok) {
+      console.error('Token exchange failed:', await tokenResponse.text());
+      return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=token_exchange_failed`);
+    }
+
     const tokenData = await tokenResponse.json();
     console.log('Token data:', tokenData);
 
     if (!tokenData.access_token) {
       console.error('Failed to get access token:', tokenData);
-      throw new Error('Failed to get access token');
+      return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=no_access_token`);
     }
 
     // Check for existing Strava account
@@ -84,6 +102,6 @@ export async function GET(request: NextRequest) {
     return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?success=connected`);
   } catch (error) {
     console.error('Strava connection error:', error);
-    return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=failed`);
+    return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=connection_failed`);
   }
 } 

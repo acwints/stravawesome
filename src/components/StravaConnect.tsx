@@ -5,12 +5,22 @@ import { useSession } from 'next-auth/react';
 export default function StravaConnect() {
   const { data: session } = useSession();
 
-  const connectStrava = () => {
-    const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=143565&response_type=code&redirect_uri=${encodeURIComponent(
-      'http://localhost:3000/api/strava/callback'
-    )}&scope=activity:read_all,profile:read_all`;
+  const connectStrava = async () => {
+    try {
+      const response = await fetch('/api/strava/auth-url');
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error('Failed to get Strava auth URL:', data.error);
+        return;
+      }
 
-    window.location.href = stravaAuthUrl;
+      // Store state in sessionStorage for verification during callback
+      sessionStorage.setItem('stravaOAuthState', data.state);
+      window.location.href = data.url;
+    } catch (error) {
+      console.error('Error connecting to Strava:', error);
+    }
   };
 
   if (!session) return null;
