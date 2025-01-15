@@ -7,6 +7,9 @@ export async function GET(request: NextRequest) {
       return Response.json({ error: 'Missing Strava client ID' }, { status: 500 });
     }
 
+    const searchParams = request.nextUrl.searchParams;
+    const forceLogin = searchParams.get('force') === 'true';
+
     const state = generateOAuthState();
     const baseUrl = 'https://www.strava.com/oauth/authorize';
     const params = new URLSearchParams({
@@ -15,6 +18,7 @@ export async function GET(request: NextRequest) {
       redirect_uri: `${process.env.NEXTAUTH_URL}/api/strava/callback`,
       scope: 'activity:read_all,profile:read_all',
       state,
+      ...(forceLogin ? { approval_prompt: 'force' } : {}),
     });
 
     return Response.json({

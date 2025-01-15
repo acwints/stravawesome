@@ -97,7 +97,7 @@ export default function GoalsProgress({ activities }: { activities: StravaActivi
               const initialGoals = [...goals];
               ACTIVITY_TYPES.forEach(({ type }) => {
                 if (!initialGoals.find(g => g.activityType === type)) {
-                  initialGoals.push({ activityType: type, targetDistance: 0, year: CURRENT_YEAR, userId: '' });
+                  initialGoals.push({ activityType: type, targetDistance: 50, year: CURRENT_YEAR, userId: '' });
                 }
               });
               setEditableGoals(initialGoals);

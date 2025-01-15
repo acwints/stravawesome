@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/config';
 import prisma from '@/lib/prisma';
+import { ACTIVITY_TYPES } from '@/constants';
 
 // Get user's goals
 export async function GET() {
@@ -18,6 +19,18 @@ export async function GET() {
         year: 2025,
       },
     });
+
+    // If no goals exist, return default goals
+    if (goals.length === 0) {
+      return Response.json(
+        ACTIVITY_TYPES.map(({ type }) => ({
+          userId: session.user.id,
+          year: 2025,
+          activityType: type,
+          targetDistance: 50,
+        }))
+      );
+    }
 
     return Response.json(goals);
   } catch (error) {
@@ -42,7 +55,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'Invalid goals format' }, { status: 400 });
     }
 
-    const validActivityTypes = ['Run', 'Ride', 'Walk', 'Hike'];
+    const validActivityTypes = ACTIVITY_TYPES.map(t => t.type);
     const validGoals = goals.every(goal => 
       typeof goal.targetDistance === 'number' &&
       validActivityTypes.includes(goal.activityType)
@@ -69,7 +82,7 @@ export async function POST(request: NextRequest) {
           userId: session.user.id,
           year: 2025,
           activityType: goal.activityType,
-          targetDistance: goal.targetDistance,
+          targetDistance: goal.targetDistance || 50,
         },
       })
     );

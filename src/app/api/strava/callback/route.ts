@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/config';
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,46 +63,67 @@ export async function GET(request: NextRequest) {
       return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=no_access_token`);
     }
 
-    // Check for existing Strava account
-    const existingAccount = await prisma.account.findFirst({
-      where: {
-        userId: session.user.id,
-        provider: 'strava',
-      },
-    });
-
-    if (existingAccount) {
-      // Update existing account
-      await prisma.account.update({
-        where: { id: existingAccount.id },
-        data: {
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
-          expires_at: Math.floor(Date.now() / 1000 + tokenData.expires_in),
-          token_type: tokenData.token_type,
-          scope: 'read,activity:read_all,profile:read_all',
-        },
-      });
-    } else {
-      // Create new account
-      await prisma.account.create({
-        data: {
-          userId: session.user.id,
-          type: 'oauth',
+    try {
+      // First try to find if this Strava account is connected to any user
+      const existingStravaConnection = await prisma.account.findFirst({
+        where: {
           provider: 'strava',
           providerAccountId: tokenData.athlete.id.toString(),
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
-          expires_at: Math.floor(Date.now() / 1000 + tokenData.expires_in),
-          token_type: tokenData.token_type,
-          scope: 'read,activity:read_all,profile:read_all',
         },
       });
-    }
 
-    return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?success=connected`);
+      if (existingStravaConnection && existingStravaConnection.userId !== session.user.id) {
+        console.error('Strava account already connected to another user');
+        return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=already_connected`);
+      }
+
+      // Check for existing Strava account for current user
+      const existingAccount = await prisma.account.findFirst({
+        where: {
+          userId: session.user.id,
+          provider: 'strava',
+        },
+      });
+
+      const accountData = {
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token,
+        expires_at: Math.floor(Date.now() / 1000 + tokenData.expires_in),
+        token_type: tokenData.token_type,
+        scope: 'read,activity:read_all,profile:read_all',
+      };
+
+      if (existingAccount) {
+        // Update existing account
+        await prisma.account.update({
+          where: { id: existingAccount.id },
+          data: accountData,
+        });
+      } else {
+        // Create new account
+        await prisma.account.create({
+          data: {
+            userId: session.user.id,
+            type: 'oauth',
+            provider: 'strava',
+            providerAccountId: tokenData.athlete.id.toString(),
+            ...accountData,
+          },
+        });
+      }
+
+      return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?success=connected`);
+    } catch (error) {
+      console.error('Database error:', error);
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=already_connected`);
+        }
+      }
+      return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=database_error`);
+    }
   } catch (error) {
-    console.error('Strava connection error:', error);
+    console.error('Strava connection error:', error instanceof Error ? error.message : error);
     return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=connection_failed`);
   }
 } 
