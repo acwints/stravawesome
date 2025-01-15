@@ -12,6 +12,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  TooltipProps,
 } from 'recharts';
 import { StravaActivity, ActivityData } from '@/types';
 import { fetchActivities } from '@/services/api';
@@ -20,15 +21,16 @@ import GoalsProgress from '@/components/GoalsProgress';
 import StravaConnect from '@/components/StravaConnect';
 import RecentActivities from '@/components/RecentActivities';
 import { GoalsSkeleton } from '@/components/ui/Skeleton';
+import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
-function CustomTooltip({ active, payload, label }: any) {
+function CustomTooltip({ active, payload, label }: TooltipProps<ValueType, NameType>) {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white p-4 rounded-lg shadow-lg border">
         <p className="font-medium">Week of {label}</p>
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry, index) => (
           <p key={index} style={{ color: entry.color }}>
-            {entry.name}: {Math.round(entry.value)} miles
+            {entry.name}: {Math.round(entry.value as number)} miles
           </p>
         ))}
       </div>

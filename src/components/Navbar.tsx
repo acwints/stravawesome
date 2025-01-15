@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import Image from 'next/image';
 
 export default function Navbar() {
   const { data: session } = useSession();
@@ -31,10 +32,12 @@ export default function Navbar() {
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   className="flex items-center space-x-2 focus:outline-none"
                 >
-                  <img
+                  <Image
                     src={session.user?.image || '/default-avatar.png'}
                     alt={session.user?.name || 'User'}
-                    className="h-8 w-8 rounded-full"
+                    width={32}
+                    height={32}
+                    className="rounded-full"
                   />
                   <svg
                     className={`h-4 w-4 text-gray-500 transition-transform ${
@@ -81,4 +84,4 @@ export default function Navbar() {
       </div>
     </nav>
   );
-} 
+}
