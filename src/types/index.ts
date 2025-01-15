@@ -1,4 +1,5 @@
 export interface StravaActivity {
+  id: number;
   type: string;
   start_date: string;
   distance: number;

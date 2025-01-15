@@ -1,26 +1,33 @@
+'use client';
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { Goal, StravaActivity } from '@/types';
 import { ACTIVITY_TYPES, METERS_TO_MILES, CURRENT_YEAR } from '@/constants';
-import { fetchGoals, updateGoals } from '@/services/api';
+import { fetchGoals, updateGoals, fetchActivities } from '@/services/api';
 import { GoalsSkeleton } from './ui/Skeleton';
 
-export default function GoalsProgress({ activities }: { activities: StravaActivity[] }) {
+export default function GoalsProgress() {
   const [isEditing, setIsEditing] = useState(false);
   const [editableGoals, setEditableGoals] = useState<Goal[]>([]);
   
-  const { data: goals, error, mutate, isLoading } = useSWR<Goal[]>('/api/goals', fetchGoals, {
+  const { data: goals, error: goalsError, mutate, isLoading: goalsLoading } = useSWR<Goal[]>('/api/goals', fetchGoals, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false
   });
 
-  if (error) {
-    toast.error('Failed to load goals');
+  const { data: activities, error: activitiesError } = useSWR<StravaActivity[]>('/api/strava/activities', fetchActivities, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false
+  });
+
+  if (goalsError || activitiesError) {
+    toast.error('Failed to load data');
     return null;
   }
 
-  if (isLoading || !goals) {
+  if (goalsLoading || !goals || !activities) {
     return <GoalsSkeleton />;
   }
 
