@@ -1,5 +1,4 @@
 import { type NextAuthOptions } from "next-auth"
-import type { AdapterUser } from "@auth/core/adapters"
 import StravaProvider from 'next-auth/providers/strava';
 import GoogleProvider from 'next-auth/providers/google';
 import { PrismaAdapter } from "@auth/prisma-adapter";
