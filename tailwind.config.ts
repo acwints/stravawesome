@@ -9,14 +9,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        'strava-orange': '#FC4C02',
-        'strava-light': '#FFFFFF',
-        strava: {
-          orange: '#fc4c02',
-          gray: '#242428',
-          navy: '#1a1a1f',
-          light: '#f7f7fa',
-        },
+        background: "var(--background)",
+        foreground: "var(--foreground)",
       },
     },
   },
