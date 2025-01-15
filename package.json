@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@auth/core": "^0.37.4",
+    "@auth/core": "0.34.2",
     "@auth/prisma-adapter": "^2.7.4",
     "@auth/supabase-adapter": "^1.7.4",
     "@prisma/client": "^6.2.1",
