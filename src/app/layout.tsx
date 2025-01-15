@@ -4,7 +4,7 @@ import "./globals.css";
 import { NextAuthProvider } from "@/providers/NextAuthProvider";
 import Navbar from "@/components/Navbar";
 import { getServerSession } from "next-auth";
-import { authOptions } from "./api/auth/[...nextauth]/route";
+import { authOptions } from "./api/auth/config";
 import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ["latin"] });

@@ -1,6 +1,6 @@
-import { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '../../auth/config';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -9,7 +9,7 @@ export async function GET() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
@@ -22,7 +22,7 @@ export async function GET() {
     });
 
     if (!stravaAccount) {
-      return Response.json({ error: 'Strava not connected' }, { status: 400 });
+      return NextResponse.json({ error: 'Strava not connected' }, { status: 400 });
     }
 
     // Check if token needs refresh
@@ -69,9 +69,9 @@ export async function GET() {
     );
 
     const activities = await activitiesResponse.json();
-    return Response.json(activities);
+    return NextResponse.json(activities);
   } catch (error) {
     console.error('Error fetching activities:', error);
-    return Response.json({ error: 'Failed to fetch activities' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch activities' }, { status: 500 });
   }
 } 
