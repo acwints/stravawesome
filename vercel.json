@@ -1,5 +1,18 @@
 {
   "buildCommand": "prisma generate && next build",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.stravawesome.com"
+        }
+      ],
+      "destination": "https://stravawesome.com/$1",
+      "permanent": true
+    }
+  ]
 } 

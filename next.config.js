@@ -9,21 +9,6 @@ const nextConfig = {
       },
     ],
   },
-  async redirects() {
-    return [
-      {
-        source: '/:path*',
-        has: [
-          {
-            type: 'host',
-            value: 'www.stravawesome.com',
-          },
-        ],
-        destination: 'https://stravawesome.com/:path*',
-        permanent: true,
-      },
-    ];
-  },
 }
 
 module.exports = nextConfig 
