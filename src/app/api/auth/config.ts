@@ -1,4 +1,4 @@
-import { type NextAuthOptions, type Session } from "next-auth"
+import { type NextAuthOptions } from "next-auth"
 import type { AdapterUser } from "@auth/core/adapters"
 import StravaProvider from 'next-auth/providers/strava';
 import GoogleProvider from 'next-auth/providers/google';
@@ -21,7 +21,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, user }: { session: Session; user: AdapterUser }) {
+    async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
         const stravaAccount = await prisma.account.findFirst({
