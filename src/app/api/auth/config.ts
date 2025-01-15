@@ -1,10 +1,21 @@
-import { AuthOptions } from 'next-auth';
+import { type Session, type DefaultSession, type NextAuthOptions } from "next-auth"
+import type { JWT } from "next-auth/jwt"
+import type { AdapterUser } from "@auth/core/adapters"
 import StravaProvider from 'next-auth/providers/strava';
 import GoogleProvider from 'next-auth/providers/google';
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import prisma from "@/lib/prisma";
 
-export const authOptions: AuthOptions = {
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      id: string;
+      stravaConnected: boolean;
+    } & DefaultSession['user']
+  }
+}
+
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -20,10 +31,13 @@ export const authOptions: AuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
+    async session({ session, user, token }: { 
+      session: Session; 
+      user: AdapterUser; 
+      token: JWT; 
+    }) {
       if (session.user) {
         session.user.id = user.id;
-        // Check if user has Strava connected
         const stravaAccount = await prisma.account.findFirst({
           where: {
             userId: user.id,
@@ -36,7 +50,7 @@ export const authOptions: AuthOptions = {
     },
   },
   session: {
-    strategy: "database",
+    strategy: "database" as const,
   },
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
