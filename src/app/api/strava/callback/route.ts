@@ -1,12 +1,11 @@
 import { NextRequest } from 'next/server';
-import { getServerSession } from 'next-auth/next';
+import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/config';
 import prisma from '@/lib/prisma';
-import { Session } from 'next-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions) as Session;
+    const session = await getServerSession(authOptions);
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
 

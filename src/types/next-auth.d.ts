@@ -5,6 +5,7 @@ declare module "next-auth" {
     user: {
       id: string;
       stravaConnected: boolean;
-    } & DefaultSession['user']
+    } & DefaultSession["user"]
+    expires: string
   }
 } 
