@@ -58,9 +58,9 @@ export async function GET() {
       });
     }
 
-    // Fetch activities from Strava
+    // Fetch activities from Strava with detailed data including GPS coordinates
     const activitiesResponse = await fetch(
-      'https://www.strava.com/api/v3/athlete/activities?per_page=10',
+      'https://www.strava.com/api/v3/athlete/activities?per_page=10&include_all_efforts=true',
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -69,7 +69,38 @@ export async function GET() {
     );
 
     const activities = await activitiesResponse.json();
-    return NextResponse.json(activities);
+    
+    // Fetch detailed data for each activity to get GPS coordinates
+    const detailedActivities = await Promise.all(
+      activities.map(async (activity: any) => {
+        try {
+          const detailResponse = await fetch(
+            `https://www.strava.com/api/v3/activities/${activity.id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+          const detailData = await detailResponse.json();
+          return {
+            ...activity,
+            start_latlng: detailData.start_latlng,
+            end_latlng: detailData.end_latlng,
+            map: detailData.map,
+            start_latitude: detailData.start_latitude,
+            start_longitude: detailData.start_longitude,
+            end_latitude: detailData.end_latitude,
+            end_longitude: detailData.end_longitude,
+          };
+        } catch (error) {
+          console.error(`Error fetching details for activity ${activity.id}:`, error);
+          return activity;
+        }
+      })
+    );
+
+    return NextResponse.json(detailedActivities);
   } catch (error) {
     console.error('Error fetching activities:', error);
     return NextResponse.json({ error: 'Failed to fetch activities' }, { status: 500 });

@@ -1,4 +1,4 @@
-import { StravaActivity, Goal } from '@/types';
+import { StravaActivity, Goal, AIChatResponse } from '@/types';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options);
@@ -29,4 +29,12 @@ export async function connectStrava(code: string): Promise<void> {
   if (!response.ok) {
     throw new Error('Failed to connect Strava account');
   }
+}
+
+export async function sendAIMessage(message: string): Promise<AIChatResponse> {
+  return fetchJson<AIChatResponse>('/api/ai/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
 } 

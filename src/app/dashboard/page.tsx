@@ -8,6 +8,8 @@ import StravaConnect from '@/components/StravaConnect';
 import GoalsProgress from '@/components/GoalsProgress';
 import RecentActivities from '@/components/RecentActivities';
 import WeeklyChart from '@/components/WeeklyChart';
+import AIChat from '@/components/AIChat';
+import TrainingMapWrapper from '@/components/TrainingMapWrapper';
 import { Session } from "next-auth";
 
 function LoadingSpinner() {
@@ -57,6 +59,31 @@ function DashboardContent({ session }: { session: Session }) {
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Weekly Summary</h3>
               <p className="text-gray-600">Coming soon...</p>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AIChat />
+            <div className="bg-white shadow rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Training Insights</h3>
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-900">Consistency</h4>
+                  <p className="text-sm text-blue-700">Track your training patterns and consistency over time.</p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <h4 className="font-medium text-green-900">Performance</h4>
+                  <p className="text-sm text-green-700">Monitor your pace, distance, and improvement trends.</p>
+                </div>
+                <div className="p-4 bg-purple-50 rounded-lg">
+                  <h4 className="font-medium text-purple-900">Goals</h4>
+                  <p className="text-sm text-purple-700">Stay on track with your annual training goals.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6">
+            <TrainingMapWrapper />
           </div>
         </>
       )}

@@ -4,13 +4,16 @@ import GoogleProvider from 'next-auth/providers/google';
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import prisma from "@/lib/prisma";
 
-export const authOptions: NextAuthOptions = {
-  debug: process.env.NODE_ENV !== 'production',
-  adapter: PrismaAdapter(prisma),
-  providers: [
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+const providers: NextAuthOptions['providers'] = [];
+
+if (googleClientId && googleClientSecret) {
+  providers.push(
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
       authorization: {
         params: {
           prompt: "consent",
@@ -18,15 +21,24 @@ export const authOptions: NextAuthOptions = {
           response_type: "code"
         }
       }
-    }),
-    StravaProvider({
-      clientId: process.env.STRAVA_CLIENT_ID!,
-      clientSecret: process.env.STRAVA_CLIENT_SECRET!,
-      authorization: {
-        params: { scope: 'read,activity:read_all,profile:read_all' },
-      },
-    }),
-  ],
+    })
+  );
+}
+
+providers.push(
+  StravaProvider({
+    clientId: process.env.STRAVA_CLIENT_ID!,
+    clientSecret: process.env.STRAVA_CLIENT_SECRET!,
+    authorization: {
+      params: { scope: 'read,activity:read_all,profile:read_all' },
+    },
+  })
+);
+
+export const authOptions: NextAuthOptions = {
+  debug: process.env.NODE_ENV !== 'production',
+  adapter: PrismaAdapter(prisma),
+  providers,
   callbacks: {
     async session({ session, user }) {
       if (session.user) {
@@ -40,6 +52,26 @@ export const authOptions: NextAuthOptions = {
         session.user.stravaConnected = !!stravaAccount;
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`;
+      }
+
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
+
+      try {
+        const parsed = new URL(url);
+        if (parsed.origin === new URL(baseUrl).origin) {
+          return url;
+        }
+      } catch {
+        return `${baseUrl}/dashboard`;
+      }
+
+      return `${baseUrl}/dashboard`;
     },
   },
   session: {

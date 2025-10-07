@@ -12,6 +12,17 @@ export interface StravaActivity {
   has_heartrate?: boolean;
   average_heartrate?: number;
   max_heartrate?: number;
+  start_latlng?: [number, number];
+  end_latlng?: [number, number];
+  start_latitude?: number;
+  start_longitude?: number;
+  end_latitude?: number;
+  end_longitude?: number;
+  map?: {
+    id: string;
+    summary_polyline: string;
+    resource_state: number;
+  };
 }
 
 export interface ActivityData {
@@ -41,4 +52,21 @@ export interface ActivityTypeConfig {
   label: string;
   stravaType: string;
   color: string;
+}
+
+export interface AIChatMessage {
+  id: string;
+  content: string;
+  role: 'user' | 'assistant';
+  timestamp: Date;
+}
+
+export interface AIChatResponse {
+  response: string;
+  trainingData: {
+    totalActivities: number;
+    totalDistance: string;
+    totalTime: number;
+    activityTypes: string[];
+  };
 } 

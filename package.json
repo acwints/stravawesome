@@ -3,11 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "setup": "node scripts/setup-db.js",
+    "credentials": "node scripts/get-credentials.js",
+    "db-password": "node scripts/update-db-password.js"
   },
   "dependencies": {
     "@auth/core": "0.34.2",
@@ -15,12 +18,17 @@
     "@auth/supabase-adapter": "^1.7.4",
     "@prisma/client": "^6.2.1",
     "@supabase/supabase-js": "^2.47.13",
+    "@types/leaflet": "^1.9.20",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.4.5",
+    "leaflet": "^1.9.4",
     "next": "15.1.4",
     "next-auth": "^4.24.11",
+    "openai": "^4.67.3",
     "prisma": "^6.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0",
     "recharts": "^2.15.0",
     "sonner": "^1.7.2",
     "swr": "^2.3.0"
@@ -29,7 +37,7 @@
     "@eslint/eslintrc": "^3",
     "@types/date-fns": "^2.5.3",
     "@types/node": "^20",
-    "@types/react": "^19",
+    "@types/react": "19.2.2",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.1.4",
