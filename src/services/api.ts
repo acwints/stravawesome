@@ -1,11 +1,34 @@
 import { StravaActivity, Goal, AIChatResponse } from '@/types';
+import { ApiResponse } from '@/lib/api-response';
+
+class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options);
+  const data = await response.json();
+
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    // Handle standardized error response
+    const errorMessage = data.error || `HTTP error! status: ${response.status}`;
+    throw new ApiError(errorMessage, response.status, data.code);
   }
-  return response.json();
+
+  // Handle standardized success response
+  if (data.success !== undefined) {
+    return (data as ApiResponse<T>).data as T;
+  }
+
+  // Fallback for non-standardized responses
+  return data;
 }
 
 export async function fetchActivities(): Promise<StravaActivity[]> {

@@ -36,7 +36,7 @@ providers.push(
 );
 
 export const authOptions: NextAuthOptions = {
-  debug: process.env.NODE_ENV !== 'production',
+  debug: process.env.NEXTAUTH_DEBUG === 'true',
   adapter: PrismaAdapter(prisma),
   providers,
   callbacks: {

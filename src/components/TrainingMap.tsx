@@ -1,6 +1,6 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { StravaActivity } from '@/types';
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 import { METERS_TO_MILES } from '@/constants';
@@ -8,6 +8,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
 // Fix for default markers in react-leaflet
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -37,23 +38,6 @@ export default function TrainingMap({ activities }: TrainingMapProps) {
   // Calculate bounds to fit all markers
   const bounds = activitiesWithLocation.map((activity) => activity.start_latlng!);
   const mapBounds = L.latLngBounds(bounds);
-
-  // Group activities by type for different colors
-  const getActivityColor = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'run':
-        return '#ef4444'; // red
-      case 'ride':
-      case 'cycling':
-        return '#3b82f6'; // blue
-      case 'walk':
-        return '#10b981'; // green
-      case 'hike':
-        return '#f59e0b'; // yellow
-      default:
-        return '#6b7280'; // gray
-    }
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border">

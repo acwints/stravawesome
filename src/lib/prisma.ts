@@ -19,7 +19,9 @@ const prismaClientSingleton = () => {
   }
 
   return new PrismaClient({
-    log: ['error'],
+    log: process.env.NODE_ENV === 'production'
+      ? ['error']
+      : ['query', 'error', 'warn'],
     datasources: {
       db: {
         url: databaseUrl,

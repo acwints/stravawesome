@@ -1,71 +1,47 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/config';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
+import { StravaClient } from '@/lib/strava-client';
+import { logger } from '@/lib/logger';
+import { successResponse, ErrorResponses, withErrorHandling, validateEnvVars } from '@/lib/api-response';
 import OpenAI from 'openai';
 
-const prisma = new PrismaClient();
+validateEnvVars(['OPENAI_API_KEY']);
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  return withErrorHandling(async () => {
+    const startTime = Date.now();
+    logger.apiRequest('POST', '/api/ai/chat');
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    const session = await getServerSession(authOptions);
 
-  try {
+    if (!session?.user?.id) {
+      logger.warn('Unauthorized access attempt to AI chat');
+      return ErrorResponses.unauthorized();
+    }
+
     const { message } = await request.json();
 
-    if (!message) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    if (!message || typeof message !== 'string') {
+      logger.warn('Invalid message in AI chat request', { userId: session.user.id });
+      return ErrorResponses.badRequest('Message is required and must be a string');
     }
 
-    // Get the user's Strava token
-    const stravaAccount = await prisma.account.findFirst({
-      where: {
-        userId: session.user.id,
-        provider: 'strava',
-      },
-    });
+    logger.debug('Processing AI chat request', { userId: session.user.id, messageLength: message.length });
 
-    if (!stravaAccount) {
-      return NextResponse.json({ error: 'Strava not connected' }, { status: 400 });
-    }
+    const stravaClient = new StravaClient(prisma);
 
-    // Check if token needs refresh
-    const now = Math.floor(Date.now() / 1000);
-    let accessToken = stravaAccount.access_token;
+    // Get valid access token (with automatic refresh if needed)
+    const tokenResult = await stravaClient.getValidAccessToken(session.user.id);
 
-    if (stravaAccount.expires_at && stravaAccount.expires_at < now) {
-      // Token needs refresh
-      const response = await fetch('https://www.strava.com/oauth/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          client_id: process.env.STRAVA_CLIENT_ID,
-          client_secret: process.env.STRAVA_CLIENT_SECRET,
-          grant_type: 'refresh_token',
-          refresh_token: stravaAccount.refresh_token,
-        }),
-      });
-
-      const data = await response.json();
-      accessToken = data.access_token;
-
-      // Update token in database
-      await prisma.account.update({
-        where: { id: stravaAccount.id },
-        data: {
-          access_token: data.access_token,
-          expires_at: Math.floor(Date.now() / 1000 + data.expires_in),
-          refresh_token: data.refresh_token,
-        },
-      });
+    if (!tokenResult) {
+      logger.warn('Strava not connected for AI chat', { userId: session.user.id });
+      return ErrorResponses.badRequest('Strava account not connected. Please connect your Strava account first.');
     }
 
     // Fetch recent activities from Strava (last 30 days)
@@ -73,16 +49,26 @@ export async function POST(request: NextRequest) {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const unixTimestamp = Math.floor(thirtyDaysAgo.getTime() / 1000);
 
+    logger.externalApi('Strava', `GET /athlete/activities (after=${unixTimestamp})`);
+
     const activitiesResponse = await fetch(
       `https://www.strava.com/api/v3/athlete/activities?after=${unixTimestamp}&per_page=100`,
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${tokenResult.accessToken}`,
         },
       }
     );
 
+    if (!activitiesResponse.ok) {
+      logger.error('Failed to fetch activities for AI chat', undefined, {
+        status: activitiesResponse.status
+      });
+      return ErrorResponses.internalError('Failed to fetch activities from Strava');
+    }
+
     const activities = await activitiesResponse.json();
+    logger.info(`Fetched ${activities.length} activities for AI chat`, { userId: session.user.id });
 
     // Get user's goals
     const goals = await prisma.goal.findMany({
@@ -93,8 +79,20 @@ export async function POST(request: NextRequest) {
     });
 
     // Prepare training data summary for AI
+    interface StravaActivity {
+      name: string;
+      type: string;
+      distance: number;
+      moving_time: number;
+      start_date: string;
+      average_speed?: number;
+      total_elevation_gain?: number;
+      average_heartrate?: number;
+      max_heartrate?: number;
+    }
+
     const trainingData = {
-      activities: activities.map((activity: any) => ({
+      activities: activities.map((activity: StravaActivity) => ({
         name: activity.name,
         type: activity.type,
         distance: activity.distance,
@@ -112,9 +110,9 @@ export async function POST(request: NextRequest) {
       })),
       summary: {
         totalActivities: activities.length,
-        totalDistance: activities.reduce((sum: number, activity: any) => sum + activity.distance, 0),
-        totalTime: activities.reduce((sum: number, activity: any) => sum + (activity.moving_time || 0), 0),
-        activityTypes: [...new Set(activities.map((activity: any) => activity.type))],
+        totalDistance: activities.reduce((sum: number, activity: StravaActivity) => sum + activity.distance, 0),
+        totalTime: activities.reduce((sum: number, activity: StravaActivity) => sum + (activity.moving_time || 0), 0),
+        activityTypes: [...new Set(activities.map((activity: StravaActivity) => activity.type))],
       }
     };
 
@@ -131,11 +129,13 @@ Goals for ${new Date().getFullYear()}:
 ${goals.map(goal => `- ${goal.activityType}: ${goal.targetDistance} miles`).join('\n')}
 
 Recent Activities (last 10):
-${activities.slice(0, 10).map((activity: any) => 
+${activities.slice(0, 10).map((activity: StravaActivity) =>
   `- ${activity.name} (${activity.type}): ${(activity.distance / 1609.34).toFixed(2)} miles on ${new Date(activity.start_date).toLocaleDateString()}`
 ).join('\n')}
 
 Please provide helpful, encouraging, and insightful analysis based on this training data. Be specific about patterns, progress, and suggestions for improvement.`;
+
+    logger.debug('Calling OpenAI API', { model: 'gpt-4', messageLength: message.length });
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
@@ -149,7 +149,14 @@ Please provide helpful, encouraging, and insightful analysis based on this train
 
     const aiResponse = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
 
-    return NextResponse.json({ 
+    const duration = Date.now() - startTime;
+    logger.apiResponse('POST', '/api/ai/chat', 200, duration, {
+      userId: session.user.id,
+      activitiesCount: activities.length,
+      responseLength: aiResponse.length
+    });
+
+    return successResponse({
       response: aiResponse,
       trainingData: {
         totalActivities: trainingData.summary.totalActivities,
@@ -158,9 +165,5 @@ Please provide helpful, encouraging, and insightful analysis based on this train
         activityTypes: trainingData.summary.activityTypes,
       }
     });
-
-  } catch (error) {
-    console.error('Error in AI chat:', error);
-    return NextResponse.json({ error: 'Failed to process AI request' }, { status: 500 });
-  }
+  });
 }

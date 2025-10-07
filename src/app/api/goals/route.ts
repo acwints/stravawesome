@@ -3,16 +3,24 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/config';
 import prisma from '@/lib/prisma';
 import { ACTIVITY_TYPES } from '@/constants';
+import { logger } from '@/lib/logger';
+import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
 
 // Get user's goals
 export async function GET() {
-  const session = await getServerSession(authOptions);
+  return withErrorHandling(async () => {
+    const startTime = Date.now();
+    logger.apiRequest('GET', '/api/goals');
 
-  if (!session?.user?.id) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    const session = await getServerSession(authOptions);
 
-  try {
+    if (!session?.user?.id) {
+      logger.warn('Unauthorized access attempt to goals');
+      return ErrorResponses.unauthorized();
+    }
+
+    logger.dbQuery('findMany', 'Goal', { userId: session.user.id, year: 2025 });
+
     const goals = await prisma.goal.findMany({
       where: {
         userId: session.user.id,
@@ -22,48 +30,60 @@ export async function GET() {
 
     // If no goals exist, return default goals
     if (goals.length === 0) {
-      return Response.json(
-        ACTIVITY_TYPES.map(({ type }) => ({
-          userId: session.user.id,
-          year: 2025,
-          activityType: type,
-          targetDistance: 50,
-        }))
-      );
+      logger.info('No goals found, returning defaults', { userId: session.user.id });
+      const defaultGoals = ACTIVITY_TYPES.map(({ type }) => ({
+        userId: session.user.id,
+        year: 2025,
+        activityType: type,
+        targetDistance: 50,
+      }));
+
+      const duration = Date.now() - startTime;
+      logger.apiResponse('GET', '/api/goals', 200, duration, { goalsCount: defaultGoals.length });
+
+      return successResponse(defaultGoals);
     }
 
-    return Response.json(goals);
-  } catch (error) {
-    console.error('Error fetching goals:', error);
-    return Response.json({ error: 'Failed to fetch goals' }, { status: 500 });
-  }
+    const duration = Date.now() - startTime;
+    logger.apiResponse('GET', '/api/goals', 200, duration, { goalsCount: goals.length });
+
+    return successResponse(goals);
+  });
 }
 
 // Create or update goals
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  return withErrorHandling(async () => {
+    const startTime = Date.now();
+    logger.apiRequest('POST', '/api/goals');
 
-  if (!session?.user?.id) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    const session = await getServerSession(authOptions);
 
-  try {
+    if (!session?.user?.id) {
+      logger.warn('Unauthorized access attempt to update goals');
+      return ErrorResponses.unauthorized();
+    }
+
     const goals = await request.json();
-    
+
     // Validate goals
     if (!Array.isArray(goals)) {
-      return Response.json({ error: 'Invalid goals format' }, { status: 400 });
+      logger.warn('Invalid goals format - not an array', { userId: session.user.id });
+      return ErrorResponses.badRequest('Goals must be an array');
     }
 
     const validActivityTypes = ACTIVITY_TYPES.map(t => t.type);
-    const validGoals = goals.every(goal => 
+    const validGoals = goals.every(goal =>
       typeof goal.targetDistance === 'number' &&
       validActivityTypes.includes(goal.activityType)
     );
 
     if (!validGoals) {
-      return Response.json({ error: 'Invalid goal data' }, { status: 400 });
+      logger.warn('Invalid goal data', { userId: session.user.id, goals });
+      return ErrorResponses.badRequest('Invalid goal data. Each goal must have a valid activityType and targetDistance.');
     }
+
+    logger.dbQuery('upsert', 'Goal', { userId: session.user.id, count: goals.length });
 
     // Upsert each goal
     const upsertPromises = goals.map(goal =>
@@ -88,9 +108,10 @@ export async function POST(request: NextRequest) {
     );
 
     const updatedGoals = await Promise.all(upsertPromises);
-    return Response.json(updatedGoals);
-  } catch (error) {
-    console.error('Error updating goals:', error);
-    return Response.json({ error: 'Failed to update goals' }, { status: 500 });
-  }
+
+    const duration = Date.now() - startTime;
+    logger.apiResponse('POST', '/api/goals', 200, duration, { goalsCount: updatedGoals.length });
+
+    return successResponse(updatedGoals, 'Goals updated successfully');
+  });
 } 

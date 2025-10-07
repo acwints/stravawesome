@@ -89,7 +89,7 @@ export default function AIChat() {
                   onClick={() => setInputMessage(question)}
                   className="block w-full text-left text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-2 rounded transition-colors"
                 >
-                  "{question}"
+                  &quot;{question}&quot;
                 </button>
               ))}
             </div>
