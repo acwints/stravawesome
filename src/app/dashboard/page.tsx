@@ -45,20 +45,6 @@ function DashboardContent({ session }: { session: Session }) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Welcome Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-purple-600 to-primary-700 shadow-xl rounded-2xl p-6 md:p-8">
-        <div className="relative z-10">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
-            Welcome back, {session.user?.name}! 👋
-          </h2>
-          <p className="text-primary-100 text-sm md:text-base">
-            Your Strava account is connected. Here&apos;s your training overview.
-          </p>
-        </div>
-        {/* Decorative Elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
-      </div>
 
       {/* AI Chat - Full Width at Top */}
       <AIChat />
