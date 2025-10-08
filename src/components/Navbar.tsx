@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Image from 'next/image';
 import ThemeToggle from './ThemeToggle';
 import StravaConnectButton from './StravaConnectButton';
@@ -28,7 +28,11 @@ export default function Navbar() {
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            {session && <StravaConnectButton />}
+            {session && (
+              <Suspense fallback={<div className="w-32 h-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />}>
+                <StravaConnectButton />
+              </Suspense>
+            )}
             <ThemeToggle />
             {session ? (
               <div className="flex items-center relative">
