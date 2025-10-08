@@ -17,19 +17,19 @@ export default function RecentActivities() {
 
   return (
     <>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activities</h3>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Activities</h3>
       <div className="space-y-4">
         {activities.slice(0, 5).map((activity) => (
-          <div key={activity.id} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div key={activity.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-center">
               <div>
-                <h4 className="font-medium text-gray-900">{activity.name}</h4>
-                <p className="text-sm text-gray-600">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">{activity.name}</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   {formatDistanceToNow(new Date(activity.start_date), { addSuffix: true })}
                 </p>
               </div>
               <div className="text-right">
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {(activity.distance * METERS_TO_MILES).toFixed(1)} mi
                 </span>
               </div>

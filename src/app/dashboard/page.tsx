@@ -10,6 +10,8 @@ import RecentActivities from '@/components/RecentActivities';
 import WeeklyChart from '@/components/WeeklyChart';
 import AIChat from '@/components/AIChat';
 import TrainingMapWrapper from '@/components/TrainingMapWrapper';
+import WeeklySummary from '@/components/WeeklySummary';
+import TrainingInsights from '@/components/TrainingInsights';
 import { Session } from "next-auth";
 
 function LoadingSpinner() {
@@ -56,8 +58,15 @@ function DashboardContent({ session }: { session: Session }) {
             </div>
 
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Weekly Summary</h3>
-              <p className="text-gray-600 dark:text-gray-400">Coming soon...</p>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Weekly Summary</h3>
+              <Suspense fallback={
+                <div className="space-y-3 animate-pulse">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                </div>
+              }>
+                <WeeklySummary />
+              </Suspense>
             </div>
           </div>
 
@@ -65,20 +74,16 @@ function DashboardContent({ session }: { session: Session }) {
             <AIChat />
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Training Insights</h3>
-              <div className="space-y-4">
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <h4 className="font-medium text-blue-900 dark:text-blue-300">Consistency</h4>
-                  <p className="text-sm text-blue-700 dark:text-blue-400">Track your training patterns and consistency over time.</p>
+              <Suspense fallback={
+                <div className="space-y-4 animate-pulse">
+                  <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                  </div>
                 </div>
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <h4 className="font-medium text-green-900 dark:text-green-300">Performance</h4>
-                  <p className="text-sm text-green-700 dark:text-green-400">Monitor your pace, distance, and improvement trends.</p>
-                </div>
-                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                  <h4 className="font-medium text-purple-900 dark:text-purple-300">Goals</h4>
-                  <p className="text-sm text-purple-700 dark:text-purple-400">Stay on track with your annual training goals.</p>
-                </div>
-              </div>
+              }>
+                <TrainingInsights />
+              </Suspense>
             </div>
           </div>
 
