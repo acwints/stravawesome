@@ -50,7 +50,7 @@ export default function RecentActivities() {
         {activities.slice(0, 5).map((activity, index) => {
           const icon = activityIcons[activity.type] || activityIcons.Run;
           const colorClass = getActivityColor(activity.type);
-          const pace = activity.average_speed > 0
+          const pace = activity.average_speed && activity.average_speed > 0
             ? (26.8224 / activity.average_speed)
             : null;
 
