@@ -75,6 +75,7 @@ export default function AIChat() {
 
   return (
     <div className="w-full max-w-3xl mx-auto">
+      {/* Collapsed State - Google Search Box Style */}
       {!isExpanded && messages.length === 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow duration-200">
           <form onSubmit={handleSendMessage} className="flex items-center gap-2 px-4 py-2">
