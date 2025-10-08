@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
 import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
 import { headers } from 'next/headers';
-import { startOfWeek, endOfWeek, subWeeks, startOfMonth } from 'date-fns';
+import { startOfWeek, endOfWeek, subWeeks, startOfMonth, subDays } from 'date-fns';
 
 interface StravaActivity {
   id: number;
@@ -23,6 +23,45 @@ interface StravaActivity {
   max_heartrate?: number;
   suffer_score?: number;
 }
+
+interface WeeklySummary {
+  totalActivities: number;
+  totalDistance: number;
+  totalTime: number;
+  totalElevation: number;
+  lastWeekDistance: number;
+  lastWeekActivities: number;
+}
+
+interface InsightsPayload {
+  weeklySummary: WeeklySummary;
+  insights: {
+    consistency: {
+      daysActive: number;
+      totalDays: number;
+      percentage: number;
+      trend: 'good' | 'fair' | 'low';
+    };
+    performance: {
+      averagePace: number;
+      totalRuns: number;
+      longestActivity: {
+        name: string;
+        distance: number;
+        type: string;
+        date: string;
+      } | null;
+      weekOverWeekImprovement: number;
+    };
+    goals: {
+      thisMonthDistance: number;
+      thisMonthActivities: number;
+      averageActivityDistance: number;
+    };
+  };
+}
+
+const insightsCache = new Map<string, { data: InsightsPayload; expiresAt: number }>();
 
 export async function GET() {
   return withErrorHandling(async () => {
@@ -44,6 +83,21 @@ export async function GET() {
       return ErrorResponses.badRequest('Rate limit exceeded. Please try again later.');
     }
 
+    const cacheKey = `insights:${session.user.id}`;
+    const cached = insightsCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached && cached.expiresAt > now) {
+      logger.info('Serving cached Strava insights', { userId: session.user.id });
+      const duration = Date.now() - startTime;
+      logger.apiResponse('GET', '/api/strava/insights', 200, duration, {
+        cache: true,
+        activitiesCount: cached.data.weeklySummary.totalActivities,
+      });
+
+      return successResponse(cached.data);
+    }
+
     const stravaClient = new StravaClient(prisma);
     const tokenResult = await stravaClient.getValidAccessToken(session.user.id);
 
@@ -52,16 +106,22 @@ export async function GET() {
       return ErrorResponses.badRequest('Strava account not connected.');
     }
 
-    // Fetch more activities for better insights (last 100)
-    const activities = await stravaClient.fetchActivities(tokenResult.accessToken, 100) as StravaActivity[];
+    const referenceDate = new Date();
+    const thirtyDaysAgo = subDays(referenceDate, 30);
+    const afterEpoch = Math.floor(thirtyDaysAgo.getTime() / 1000);
+
+    const activities = await stravaClient.fetchActivities(tokenResult.accessToken, 200, {
+      cacheKey: `activities:${session.user.id}:${afterEpoch}`,
+      ttlMs: 5 * 60 * 1000,
+      after: afterEpoch,
+    }) as StravaActivity[];
 
     // Calculate insights
-    const now = new Date();
-    const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
-    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-    const lastWeekStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-    const lastWeekEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-    const monthStart = startOfMonth(now);
+    const weekStart = startOfWeek(referenceDate, { weekStartsOn: 1 }); // Monday
+    const weekEnd = endOfWeek(referenceDate, { weekStartsOn: 1 });
+    const lastWeekStart = startOfWeek(subWeeks(referenceDate, 1), { weekStartsOn: 1 });
+    const lastWeekEnd = endOfWeek(subWeeks(referenceDate, 1), { weekStartsOn: 1 });
+    const monthStart = startOfMonth(referenceDate);
 
     // This week's activities
     const thisWeekActivities = activities.filter(a => {
@@ -147,12 +207,21 @@ export async function GET() {
       }
     };
 
-    const duration = Date.now() - startTime;
-    logger.apiResponse('GET', '/api/strava/insights', 200, duration);
-
-    return successResponse({
+    const payload: InsightsPayload = {
       weeklySummary,
-      insights
+      insights,
+    };
+
+    insightsCache.set(cacheKey, {
+      data: payload,
+      expiresAt: Date.now() + 2 * 60 * 1000,
     });
+
+    const duration = Date.now() - startTime;
+    logger.apiResponse('GET', '/api/strava/insights', 200, duration, {
+      activitiesCount: activities.length,
+    });
+
+    return successResponse(payload);
   });
 }

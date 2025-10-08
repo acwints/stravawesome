@@ -5,6 +5,21 @@
 import { PrismaClient, Account } from '@prisma/client';
 import { logger } from './logger';
 
+interface FetchActivitiesOptions {
+  cacheKey?: string;
+  ttlMs?: number;
+  after?: number;
+  timeoutMs?: number;
+}
+
+interface ActivitiesCacheEntry {
+  value: unknown[];
+  expiresAt: number;
+  requestedPerPage: number;
+}
+
+const activitiesCache = new Map<string, ActivitiesCacheEntry>();
+
 export interface StravaTokenRefreshResult {
   access_token: string;
   refresh_token: string;
@@ -128,18 +143,51 @@ export class StravaClient {
   /**
    * Fetch activities from Strava API
    */
-  async fetchActivities(accessToken: string, perPage: number = 10): Promise<unknown[]> {
-    try {
-      logger.externalApi('Strava', `GET /athlete/activities?per_page=${perPage}`);
+  async fetchActivities(
+    accessToken: string,
+    perPage: number = 10,
+    options: FetchActivitiesOptions = {}
+  ): Promise<unknown[]> {
+    const { cacheKey, ttlMs = 5 * 60 * 1000, after, timeoutMs = 12_000 } = options;
+    const now = Date.now();
 
-      const response = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?per_page=${perPage}&include_all_efforts=true`,
-        {
+    let cachedEntry: ActivitiesCacheEntry | undefined;
+    if (cacheKey) {
+      cachedEntry = activitiesCache.get(cacheKey);
+      if (cachedEntry && cachedEntry.expiresAt > now && cachedEntry.requestedPerPage >= perPage) {
+        logger.debug('Serving cached Strava activities', { cacheKey, perPage });
+        return cachedEntry.value;
+      }
+    }
+
+    const staleValue = cachedEntry && cachedEntry.requestedPerPage >= perPage
+      ? cachedEntry.value
+      : undefined;
+
+    try {
+      const query = new URL('https://www.strava.com/api/v3/athlete/activities');
+      query.searchParams.set('per_page', Math.min(200, Math.max(perPage, 1)).toString());
+      if (after) {
+        query.searchParams.set('after', after.toString());
+      }
+
+      logger.externalApi('Strava', `GET /athlete/activities${query.search}`);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      let response: Response;
+
+      try {
+        response = await fetch(query, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
-        }
-      );
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -147,15 +195,39 @@ export class StravaClient {
           status: response.status,
           error: errorText
         });
+        if (staleValue) {
+          logger.warn('Using stale Strava activities cache after API failure', { cacheKey, perPage });
+          return staleValue;
+        }
         throw new Error(`Strava API error: ${response.status}`);
       }
 
       const activities = await response.json();
       logger.info(`Fetched ${activities.length} activities from Strava`);
 
+      if (cacheKey) {
+        activitiesCache.set(cacheKey, {
+          value: activities,
+          expiresAt: Date.now() + ttlMs,
+          requestedPerPage: perPage,
+        });
+      }
+
       return activities;
     } catch (error) {
-      logger.error('Error fetching activities from Strava', error);
+      if ((error as Error)?.name === 'AbortError') {
+        logger.error('Strava activities fetch timed out', undefined, { timeoutMs, cacheKey });
+        if (staleValue) {
+          logger.warn('Using stale Strava activities cache after timeout', { cacheKey, perPage });
+          return staleValue;
+        }
+      } else {
+        logger.error('Error fetching activities from Strava', error);
+        if (staleValue) {
+          logger.warn('Using stale Strava activities cache after error', { cacheKey, perPage });
+          return staleValue;
+        }
+      }
       throw error;
     }
   }
@@ -196,8 +268,12 @@ export class StravaClient {
   /**
    * Fetch activities with full details including GPS data
    */
-  async fetchActivitiesWithDetails(accessToken: string, perPage: number = 10): Promise<unknown[]> {
-    const activities = await this.fetchActivities(accessToken, perPage) as Array<{ id: number; [key: string]: unknown }>;
+  async fetchActivitiesWithDetails(
+    accessToken: string,
+    perPage: number = 10,
+    options: FetchActivitiesOptions = {}
+  ): Promise<unknown[]> {
+    const activities = await this.fetchActivities(accessToken, perPage, options) as Array<{ id: number; [key: string]: unknown }>;
 
     const detailedActivities = await Promise.allSettled(
       activities.map(async (activity) => {

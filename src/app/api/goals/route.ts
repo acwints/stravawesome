@@ -1,10 +1,20 @@
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
+import type { Goal as GoalModel } from '@prisma/client';
 import { authOptions } from '../auth/config';
 import prisma from '@/lib/prisma';
 import { ACTIVITY_TYPES } from '@/constants';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
+
+type GoalPayload = GoalModel | {
+  userId: string;
+  year: number;
+  activityType: string;
+  targetDistance: number;
+};
+
+const goalsCache = new Map<string, { data: GoalPayload[]; expiresAt: number }>();
 
 // Get user's goals
 export async function GET() {
@@ -17,6 +27,21 @@ export async function GET() {
     if (!session?.user?.id) {
       logger.warn('Unauthorized access attempt to goals');
       return ErrorResponses.unauthorized();
+    }
+
+    const cacheKey = session.user.id;
+    const cached = goalsCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached && cached.expiresAt > now) {
+      const duration = Date.now() - startTime;
+      logger.info('Serving cached goals', { userId: session.user.id });
+      logger.apiResponse('GET', '/api/goals', 200, duration, {
+        goalsCount: cached.data.length,
+        cache: true,
+      });
+
+      return successResponse(cached.data);
     }
 
     logger.dbQuery('findMany', 'Goal', { userId: session.user.id, year: 2025 });
@@ -38,11 +63,21 @@ export async function GET() {
         targetDistance: 50,
       }));
 
+      goalsCache.set(cacheKey, {
+        data: defaultGoals,
+        expiresAt: Date.now() + 60 * 1000,
+      });
+
       const duration = Date.now() - startTime;
       logger.apiResponse('GET', '/api/goals', 200, duration, { goalsCount: defaultGoals.length });
 
       return successResponse(defaultGoals);
     }
+
+    goalsCache.set(cacheKey, {
+      data: goals,
+      expiresAt: Date.now() + 60 * 1000,
+    });
 
     const duration = Date.now() - startTime;
     logger.apiResponse('GET', '/api/goals', 200, duration, { goalsCount: goals.length });
@@ -106,8 +141,15 @@ export async function POST(request: NextRequest) {
         },
       })
     );
+    const cacheKey = session.user.id;
+    goalsCache.delete(cacheKey);
 
     const updatedGoals = await Promise.all(upsertPromises);
+
+    goalsCache.set(cacheKey, {
+      data: updatedGoals,
+      expiresAt: Date.now() + 60 * 1000,
+    });
 
     const duration = Date.now() - startTime;
     logger.apiResponse('POST', '/api/goals', 200, duration, { goalsCount: updatedGoals.length });
