@@ -57,42 +57,25 @@ export default function WeeklyChart() {
   if (error) return null;
   if (!activities) return <WeeklyChartSkeleton />;
 
-  // Process activities into weekly data for chart
-  const weeklyData = new Map<string, { fullDate: string; running: number; cycling: number }>();
+  // Process activities into individual data points for chart
+  const activityData: ActivityData[] = activities
+    .map((activity) => {
+      const date = new Date(activity.start_date);
+      const dateLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const distanceInMiles = Math.round(activity.distance * 0.000621371 * 10) / 10;
 
-  activities.forEach((activity) => {
-    const date = new Date(activity.start_date);
-    const week = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const distanceInMiles = activity.distance * 0.000621371;
-
-    if (!weeklyData.has(week)) {
-      weeklyData.set(week, { 
+      return {
+        week: dateLabel,
         fullDate: activity.start_date,
-        running: 0, 
-        cycling: 0 
-      });
-    }
-
-    const currentWeek = weeklyData.get(week)!;
-    if (activity.type === 'Run') {
-      currentWeek.running += distanceInMiles;
-    } else if (activity.type === 'Ride') {
-      currentWeek.cycling += distanceInMiles;
-    }
-  });
-
-  const activityData: ActivityData[] = Array.from(weeklyData.entries())
-    .map(([week, data]) => ({
-      week,
-      fullDate: data.fullDate,
-      running: Math.round(data.running * 10) / 10,
-      cycling: Math.round(data.cycling * 10) / 10,
-    }))
+        running: activity.type === 'Run' ? distanceInMiles : 0,
+        cycling: activity.type === 'Ride' ? distanceInMiles : 0,
+      };
+    })
     .sort((a, b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime());
 
   return (
     <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-6">Weekly Activity Summary</h2>
+      <h2 className="text-xl font-bold text-gray-900 mb-6">All Activities</h2>
       <div className="h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={activityData}>

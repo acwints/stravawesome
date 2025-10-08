@@ -9,8 +9,7 @@ import RecentActivities from '@/components/RecentActivities';
 import WeeklyChart from '@/components/WeeklyChart';
 import AIChat from '@/components/AIChat';
 import TrainingMapWrapper from '@/components/TrainingMapWrapper';
-import WeeklySummary from '@/components/WeeklySummary';
-import TrainingInsights from '@/components/TrainingInsights';
+import PhotoGallery from '@/components/PhotoGallery';
 import { Session } from "next-auth";
 
 function LoadingSpinner() {
@@ -59,56 +58,26 @@ function DashboardContent({ session }: { session: Session }) {
         <WeeklyChart />
       </Suspense>
 
-      {/* Three Column Layout: Recent Activities, Weekly Summary, Training Insights */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 lg:col-span-2 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
-          <Suspense fallback={<RecentActivitiesSkeleton />}>
-            <RecentActivities />
-          </Suspense>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
-                <svg className="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Weekly Summary</h3>
-            </div>
-            <Suspense fallback={
-              <div className="space-y-3 animate-pulse">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-              </div>
-            }>
-              <WeeklySummary />
-            </Suspense>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Training Insights</h3>
-            </div>
-            <Suspense fallback={
-              <div className="space-y-4 animate-pulse">
-                <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-2"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
-                </div>
-              </div>
-            }>
-              <TrainingInsights />
-            </Suspense>
-          </div>
-        </div>
+      {/* Recent Activities - Full Width */}
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
+        <Suspense fallback={<RecentActivitiesSkeleton />}>
+          <RecentActivities />
+        </Suspense>
       </div>
+
+      {/* Photo Gallery */}
+      <Suspense fallback={
+        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        </div>
+      }>
+        <PhotoGallery />
+      </Suspense>
 
       {/* Training Map */}
       <div className="grid grid-cols-1 gap-6">
