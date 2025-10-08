@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limiting for expensive AI operations
-    const headersList = headers();
+    const headersList = await headers();
     const identifier = getClientIdentifier(headersList, session.user.id);
     if (!rateLimiter.check(identifier, RateLimits.ai)) {
       logger.warn('Rate limit exceeded for AI chat', { identifier });

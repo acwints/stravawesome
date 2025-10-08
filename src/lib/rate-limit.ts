@@ -136,7 +136,7 @@ export const RateLimits = {
 /**
  * Helper to get client identifier from request
  */
-export function getClientIdentifier(headers: Headers, userId?: string): string {
+export function getClientIdentifier(headers: { get(name: string): string | null }, userId?: string): string {
   if (userId) {
     return `user:${userId}`;
   }
