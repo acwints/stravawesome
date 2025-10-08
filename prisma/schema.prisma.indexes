@@ -1,14 +1,5 @@
-generator client {
-  provider = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("POSTGRES_URL_NON_POOLING")
-  relationMode = "prisma"
-}
+// Recommended indexes for performance optimization
+// Add these to your schema.prisma file
 
 model Account {
   id                String  @id @default(cuid())
@@ -26,8 +17,8 @@ model Account {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
-  @@index([userId])
-  @@index([provider, userId])
+  @@index([userId]) // ADD THIS - frequently queried by userId
+  @@index([provider, userId]) // ADD THIS - for finding specific provider accounts
 }
 
 model Session {
@@ -37,8 +28,8 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([expires])
+  @@index([userId]) // ADD THIS - frequently queried by userId
+  @@index([expires]) // ADD THIS - for cleanup of expired sessions
 }
 
 model User {
@@ -50,6 +41,8 @@ model User {
   accounts      Account[]
   goals         Goal[]
   sessions      Session[]
+
+  // email is already unique, so it has an index
 }
 
 model VerificationToken {
@@ -58,7 +51,7 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-  @@index([expires])
+  @@index([expires]) // ADD THIS - for cleanup of expired tokens
 }
 
 model Goal {
@@ -72,5 +65,5 @@ model Goal {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, year, activityType])
-  @@index([userId, year])
+  @@index([userId, year]) // ADD THIS - frequently queried together
 }

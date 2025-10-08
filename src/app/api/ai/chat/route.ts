@@ -5,6 +5,9 @@ import prisma from '@/lib/prisma';
 import { StravaClient } from '@/lib/strava-client';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling, validateEnvVars } from '@/lib/api-response';
+import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
+import { headers } from 'next/headers';
+import { sanitizeString } from '@/lib/validation';
 import OpenAI from 'openai';
 
 validateEnvVars(['OPENAI_API_KEY']);
@@ -25,6 +28,14 @@ export async function POST(request: NextRequest) {
       return ErrorResponses.unauthorized();
     }
 
+    // Rate limiting for expensive AI operations
+    const headersList = headers();
+    const identifier = getClientIdentifier(headersList, session.user.id);
+    if (!rateLimiter.check(identifier, RateLimits.ai)) {
+      logger.warn('Rate limit exceeded for AI chat', { identifier });
+      return ErrorResponses.badRequest('Rate limit exceeded. Please wait before sending another message.');
+    }
+
     const { message } = await request.json();
 
     if (!message || typeof message !== 'string') {
@@ -32,7 +43,13 @@ export async function POST(request: NextRequest) {
       return ErrorResponses.badRequest('Message is required and must be a string');
     }
 
-    logger.debug('Processing AI chat request', { userId: session.user.id, messageLength: message.length });
+    // Sanitize and validate input
+    const sanitizedMessage = sanitizeString(message.substring(0, 500)); // Limit length
+    if (sanitizedMessage.length === 0) {
+      return ErrorResponses.badRequest('Message cannot be empty');
+    }
+
+    logger.debug('Processing AI chat request', { userId: session.user.id, messageLength: sanitizedMessage.length });
 
     const stravaClient = new StravaClient(prisma);
 

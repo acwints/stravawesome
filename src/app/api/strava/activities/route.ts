@@ -4,6 +4,8 @@ import prisma from '@/lib/prisma';
 import { StravaClient } from '@/lib/strava-client';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
+import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
+import { headers } from 'next/headers';
 
 export async function GET() {
   return withErrorHandling(async () => {
@@ -15,6 +17,14 @@ export async function GET() {
     if (!session?.user?.id) {
       logger.warn('Unauthorized access attempt to Strava activities');
       return ErrorResponses.unauthorized();
+    }
+
+    // Rate limiting
+    const headersList = headers();
+    const identifier = getClientIdentifier(headersList, session.user.id);
+    if (!rateLimiter.check(identifier, RateLimits.data)) {
+      logger.warn('Rate limit exceeded for Strava activities', { identifier });
+      return ErrorResponses.badRequest('Rate limit exceeded. Please try again later.');
     }
 
     logger.debug('Fetching Strava activities', { userId: session.user.id });

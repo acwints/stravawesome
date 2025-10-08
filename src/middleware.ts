@@ -15,15 +15,40 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
 
-  // Add security headers
+  // Enhanced security headers
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=()'
+    'camera=(), microphone=(), geolocation=(), payment=()'
   );
+
+  // Strict Transport Security (HSTS) - only in production
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=63072000; includeSubDomains; preload'
+    );
+  }
+
+  // Content Security Policy (CSP)
+  const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
+    img-src 'self' blob: data: https: https://lh3.googleusercontent.com https://cdnjs.cloudflare.com;
+    font-src 'self' https://fonts.gstatic.com;
+    connect-src 'self' https://accounts.google.com https://www.strava.com https://api.openai.com https://*.supabase.co;
+    frame-src 'self' https://accounts.google.com;
+    base-uri 'self';
+    form-action 'self';
+    frame-ancestors 'none';
+    upgrade-insecure-requests;
+  `.replace(/\s{2,}/g, ' ').trim();
+
+  response.headers.set('Content-Security-Policy', cspHeader);
 
   // Add CORS headers for API routes
   if (pathname.startsWith('/api')) {

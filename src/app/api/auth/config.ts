@@ -48,12 +48,16 @@ export const authOptions: NextAuthOptions = {
             userId: user.id,
             provider: 'strava',
           },
+          select: {
+            id: true, // Only select what we need for performance
+          }
         });
         session.user.stravaConnected = !!stravaAccount;
       }
       return session;
     },
     async redirect({ url, baseUrl }) {
+      // Prevent open redirect vulnerability
       if (url.startsWith('/')) {
         return `${baseUrl}${url}`;
       }
@@ -71,16 +75,34 @@ export const authOptions: NextAuthOptions = {
         return `${baseUrl}/dashboard`;
       }
 
+      // Always return to dashboard for untrusted URLs
       return `${baseUrl}/dashboard`;
     },
   },
   session: {
     strategy: "database" as const,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
   },
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: '/auth/signin',
     signOut: '/auth/signout',
     error: '/auth/error',
+  },
+  // Security improvements
+  useSecureCookies: process.env.NODE_ENV === 'production',
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production'
+        ? '__Secure-next-auth.session-token'
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
   },
 }; 
