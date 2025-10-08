@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import Image from 'next/image';
 import ThemeToggle from './ThemeToggle';
+import StravaConnectButton from './StravaConnectButton';
 
 export default function Navbar() {
   const { data: session } = useSession();
@@ -27,6 +28,7 @@ export default function Navbar() {
             </Link>
           </div>
           <div className="flex items-center gap-4">
+            {session && <StravaConnectButton />}
             <ThemeToggle />
             {session ? (
               <div className="flex items-center relative">
