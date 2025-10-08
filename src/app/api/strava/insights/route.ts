@@ -185,7 +185,7 @@ export async function GET() {
         daysActive: daysWithActivities,
         totalDays: 30,
         percentage: Math.round((daysWithActivities / 30) * 100),
-        trend: daysWithActivities >= 15 ? 'good' : daysWithActivities >= 8 ? 'fair' : 'low'
+        trend: (daysWithActivities >= 15 ? 'good' : daysWithActivities >= 8 ? 'fair' : 'low') as 'good' | 'fair' | 'low'
       },
       performance: {
         averagePace: avgPace,
