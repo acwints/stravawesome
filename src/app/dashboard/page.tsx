@@ -44,11 +44,20 @@ function DashboardContent({ session }: { session: Session }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg rounded-lg p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">Welcome back, {session.user?.name}!</h2>
-        <p className="text-blue-100">Your Strava account is connected. Here's your training overview.</p>
+      <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-purple-600 to-primary-700 shadow-xl rounded-2xl p-6 md:p-8">
+        <div className="relative z-10">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            Welcome back, {session.user?.name}! 👋
+          </h2>
+          <p className="text-primary-100 text-sm md:text-base">
+            Your Strava account is connected. Here's your training overview.
+          </p>
+        </div>
+        {/* Decorative Elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
       </div>
 
       {/* AI Chat - Full Width at Top */}
@@ -66,15 +75,22 @@ function DashboardContent({ session }: { session: Session }) {
 
       {/* Three Column Layout: Recent Activities, Weekly Summary, Training Insights */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 lg:col-span-2">
+        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 lg:col-span-2 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
           <Suspense fallback={<RecentActivitiesSkeleton />}>
             <RecentActivities />
           </Suspense>
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Weekly Summary</h3>
+          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+                <svg className="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Weekly Summary</h3>
+            </div>
             <Suspense fallback={
               <div className="space-y-3 animate-pulse">
                 <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
@@ -85,8 +101,15 @@ function DashboardContent({ session }: { session: Session }) {
             </Suspense>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Training Insights</h3>
+          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Training Insights</h3>
+            </div>
             <Suspense fallback={
               <div className="space-y-4 animate-pulse">
                 <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
