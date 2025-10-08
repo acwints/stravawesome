@@ -5,8 +5,9 @@ import { StravaActivity } from '@/types';
 import { fetchActivities } from '@/services/api';
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 import { METERS_TO_MILES } from '@/constants';
+import { ReactElement } from 'react';
 
-const activityIcons: Record<string, JSX.Element> = {
+const activityIcons: Record<string, ReactElement> = {
   Run: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 17l-4 4m0 0l-4-4m4 4V3" />
