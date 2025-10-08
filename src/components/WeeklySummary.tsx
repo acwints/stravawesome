@@ -33,7 +33,7 @@ export default function WeeklySummary() {
     );
   }
 
-  if (!data) {
+  if (!data || !data.weeklySummary) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Weekly Summary</h3>

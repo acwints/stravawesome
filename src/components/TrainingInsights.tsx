@@ -40,7 +40,7 @@ export default function TrainingInsights() {
     }
   );
 
-  if (error || !data) {
+  if (error || !data || !data.insights) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Training Insights</h3>
