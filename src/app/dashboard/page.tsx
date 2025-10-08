@@ -36,7 +36,7 @@ function DashboardContent({ session }: { session: Session }) {
             Connect your Strava account to view your activities, track your progress, and get AI-powered insights.
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-500">
-            Click "Connect Strava" in the navigation bar above to get started.
+            Click &quot;Connect Strava&quot; in the navigation bar above to get started.
           </p>
         </div>
       </div>
@@ -52,7 +52,7 @@ function DashboardContent({ session }: { session: Session }) {
             Welcome back, {session.user?.name}! 👋
           </h2>
           <p className="text-primary-100 text-sm md:text-base">
-            Your Strava account is connected. Here's your training overview.
+            Your Strava account is connected. Here&apos;s your training overview.
           </p>
         </div>
         {/* Decorative Elements */}

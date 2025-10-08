@@ -1,6 +1,7 @@
 import { ActivityTypeConfig } from '@/types';
 
 export const METERS_TO_MILES = 0.000621371;
+export const METERS_TO_FEET = 3.28084;
 
 export const CURRENT_YEAR = 2025;
 
