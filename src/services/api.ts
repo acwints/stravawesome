@@ -1,5 +1,5 @@
 import { StravaActivity, Goal, AIChatResponse } from '@/types';
-import { ApiResponse } from '@/lib/api-response';
+import { ApiResponse, ApiSuccessResponse } from '@/lib/api-response';
 
 class ApiError extends Error {
   constructor(
@@ -23,8 +23,14 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   }
 
   // Handle standardized success response
-  if (data.success !== undefined) {
-    return (data as ApiResponse<T>).data as T;
+  if (typeof data === 'object' && data !== null && 'success' in data) {
+    const typed = data as ApiResponse<T>;
+    if (typed.success === true) {
+      return (typed as ApiSuccessResponse<T>).data;
+    }
+    // If server incorrectly returned success flag with error shape but 2xx, throw
+    const err = (typed as unknown as { error?: string; code?: string });
+    throw new ApiError(err.error || 'Unexpected API error shape', response.status, err.code);
   }
 
   // Fallback for non-standardized responses
