@@ -9,16 +9,18 @@ export default function StravaConnect() {
   const error = searchParams.get('error');
 
   const connectStrava = async (force = false) => {
+    if (typeof window === 'undefined') return;
+
     try {
       // Use absolute URL to avoid parsing errors
       const url = new URL('/api/strava/auth-url', window.location.origin);
       if (force) {
         url.searchParams.set('force', 'true');
       }
-      
+
       const response = await fetch(url);
       const data = await response.json();
-      
+
       if (data.error) {
         console.error('Failed to get Strava auth URL:', data.error);
         return;

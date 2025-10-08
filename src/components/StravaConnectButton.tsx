@@ -18,6 +18,8 @@ export default function StravaConnectButton() {
   }, [error]);
 
   const connectStrava = async (force = false) => {
+    if (typeof window === 'undefined') return;
+
     setIsConnecting(true);
     try {
       const url = new URL('/api/strava/auth-url', window.location.origin);
