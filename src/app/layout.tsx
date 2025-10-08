@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { NextAuthProvider } from "@/providers/NextAuthProvider";
@@ -15,8 +15,12 @@ export const metadata: Metadata = {
   description: "Track, analyze, and optimize your Strava training activities with AI-powered insights",
   keywords: ["strava", "training", "fitness", "running", "cycling", "analytics"],
   authors: [{ name: "StravAwesome" }],
-  viewport: "width=device-width, initial-scale=1",
   robots: "index, follow",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default async function RootLayout({
