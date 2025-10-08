@@ -41,14 +41,15 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String         @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?        @unique
   emailVerified DateTime?
   image         String?
   accounts      Account[]
   goals         Goal[]
   sessions      Session[]
+  conversations Conversation[]
 }
 
 model VerificationToken {
@@ -72,4 +73,27 @@ model Goal {
 
   @@unique([userId, year, activityType])
   @@index([userId, year])
+}
+
+model Conversation {
+  id        String             @id @default(cuid())
+  userId    String
+  title     String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  ConversationMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model ConversationMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           String       // 'user' or 'assistant'
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }
