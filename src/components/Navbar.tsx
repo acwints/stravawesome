@@ -5,6 +5,7 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import Image from 'next/image';
+import ThemeToggle from './ThemeToggle';
 
 export default function Navbar() {
   const { data: session } = useSession();
@@ -17,15 +18,16 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-white shadow-lg">
+    <nav className="bg-white dark:bg-gray-900 shadow-lg transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex-shrink-0 flex items-center">
-            <Link href={session ? '/dashboard' : '/'} className="text-xl font-bold text-gray-800">
+            <Link href={session ? '/dashboard' : '/'} className="text-xl font-bold text-gray-800 dark:text-gray-100">
               StravAwesome
             </Link>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
             {session ? (
               <div className="flex items-center relative">
                 <button
@@ -56,14 +58,14 @@ export default function Navbar() {
                   </svg>
                 </button>
                 {isDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
                       <button
                         onClick={() => {
                           setIsDropdownOpen(false);
                           signOut({ callbackUrl: '/' });
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         Sign Out
                       </button>
