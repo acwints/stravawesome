@@ -78,15 +78,33 @@ export async function GET() {
     }
 
     // Fetch recent activities (last 30 to reduce API calls)
-    const activities = await stravaClient.fetchActivities(tokenResult.accessToken, 30, {
-      cacheKey: `activities:${session.user.id}:photos`,
-      ttlMs: 15 * 60 * 1000, // 15 minutes cache
-    }) as StravaActivity[];
+    let activities: StravaActivity[] = [];
+    try {
+      activities = await stravaClient.fetchActivities(tokenResult.accessToken, 30, {
+        cacheKey: `activities:${session.user.id}:photos`,
+        ttlMs: 15 * 60 * 1000, // 15 minutes cache
+      }) as StravaActivity[];
 
-    logger.info('Fetched activities for photos', {
-      activityCount: activities.length,
-      activitiesWithPhotoCount: activities.filter(a => a.photo_count && a.photo_count > 0).length
-    });
+      logger.info('Fetched activities for photos', {
+        activityCount: activities.length,
+        activitiesWithPhotoCount: activities.filter(a => a.photo_count && a.photo_count > 0).length
+      });
+    } catch (error) {
+      logger.warn('Failed to fetch activities for photos, returning empty result', {
+        error: error instanceof Error ? error.message : String(error),
+        userId: session.user.id
+      });
+      
+      // Return empty result instead of failing completely
+      const duration = Date.now() - startTime;
+      logger.apiResponse('GET', '/api/strava/photos', 200, duration, {
+        cache: false,
+        photoCount: 0,
+        error: 'activities_fetch_failed'
+      });
+
+      return successResponse([]);
+    }
 
     const activitiesWithPhotos: ActivityWithPhotos[] = [];
 

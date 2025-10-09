@@ -205,7 +205,10 @@ export class StravaClient {
             logger.warn('Using stale Strava activities cache due to rate limiting', { cacheKey, perPage });
             return staleValue;
           }
-          throw new Error(`Strava API rate limited: ${response.status}`);
+          
+          // If no stale cache available, return empty array instead of throwing
+          logger.warn('No stale cache available, returning empty activities array due to rate limiting', { cacheKey });
+          return [];
         }
         
         const errorText = await response.text();
@@ -302,7 +305,9 @@ export class StravaClient {
             await new Promise(resolve => setTimeout(resolve, waitTime));
             continue;
           } else {
-            throw new Error(`Strava API rate limited: ${response.status}`);
+            // If no more retries, return null instead of throwing
+            logger.warn('Max retries exceeded for activity details due to rate limiting', { activityId });
+            return null;
           }
         } else {
           const errorText = await response.text();
@@ -339,7 +344,11 @@ export class StravaClient {
     const detailedActivities = await Promise.allSettled(
       activities.map(async (activity) => {
         try {
-          const details = await this.fetchActivityDetails(accessToken, activity.id) as Record<string, unknown>;
+          const details = await this.fetchActivityDetails(accessToken, activity.id) as Record<string, unknown> | null;
+          if (details === null) {
+            logger.warn(`Activity details fetch returned null for activity ${activity.id}, using basic data`);
+            return activity;
+          }
           return {
             ...activity,
             start_latlng: details.start_latlng,
