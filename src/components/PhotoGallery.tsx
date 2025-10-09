@@ -118,19 +118,28 @@ export default function PhotoGallery() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {allPhotos.map(({ photo, activityName }) => (
-            <div
-              key={photo.unique_id}
-              className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700 hover:shadow-lg transition-shadow duration-200"
-              onClick={() => setSelectedPhoto(photo)}
-            >
-              <Image
-                src={photo.urls[600]}
-                alt={activityName}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-200"
-                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-              />
+          {allPhotos.map(({ photo, activityName }) => {
+            console.log('[PhotoGallery] Rendering photo:', {
+              unique_id: photo.unique_id,
+              url600: photo.urls[600],
+              url100: photo.urls[100],
+              source: photo.source,
+              activityName,
+            });
+            return (
+              <div
+                key={photo.unique_id}
+                className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700 hover:shadow-lg transition-shadow duration-200"
+                onClick={() => setSelectedPhoto(photo)}
+              >
+                <Image
+                  src={photo.urls[600]}
+                  alt={activityName}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-200"
+                  sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                  unoptimized
+                />
               {photo.source === 2 && (
                 <div className="absolute top-2 right-2 bg-gradient-to-br from-purple-600 to-pink-600 p-1.5 rounded-lg">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -138,8 +147,9 @@ export default function PhotoGallery() {
                   </svg>
                 </div>
               )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </div>
 
