@@ -150,7 +150,7 @@ export default function ActivityHeatmap() {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">

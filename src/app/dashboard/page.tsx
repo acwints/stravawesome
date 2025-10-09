@@ -47,10 +47,10 @@ function DashboardContent({ session }: { session: Session }) {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Activity Heatmap - FREE */}
       <Suspense fallback={
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
           <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
           <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />
         </div>
@@ -71,14 +71,12 @@ function DashboardContent({ session }: { session: Session }) {
             <WeeklyChart />
           </Suspense>
 
-          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
-            <Suspense fallback={<RecentActivitiesSkeleton />}>
-              <RecentActivities />
-            </Suspense>
-          </div>
+          <Suspense fallback={<RecentActivitiesSkeleton />}>
+            <RecentActivities />
+          </Suspense>
 
           <Suspense fallback={
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
               <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {[...Array(8)].map((_, i) => (
@@ -90,12 +88,10 @@ function DashboardContent({ session }: { session: Session }) {
             <PhotoGallery />
           </Suspense>
 
-          <div className="grid grid-cols-1 gap-6">
-            <TrainingMapWrapper />
-          </div>
+          <TrainingMapWrapper />
         </>
       ) : (
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-12 border border-gray-100 dark:border-gray-700 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-12 text-center">
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
             Unlock All Features
           </h3>

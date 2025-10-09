@@ -48,26 +48,25 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-            Premium Features
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            $12/year
-          </p>
+    <div className="max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="text-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          Premium Features
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          $12/year
+        </p>
+      </div>
+
+      {isPremium && (
+        <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200 rounded-lg p-3 text-center">
+          <p className="font-medium text-sm">You have Premium access</p>
         </div>
+      )}
 
-        {isPremium && (
-          <div className="mb-8 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200 rounded-lg p-4 text-center">
-            <p className="font-medium">You have Premium access</p>
-          </div>
-        )}
-
-        {/* Simple Feature List */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 mb-8">
+      {/* Simple Feature List */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
           <ul className="space-y-3">
             {PRICING.annual.features.map((feature, index) => (
               <li key={index} className="flex items-start gap-3">
@@ -79,7 +78,7 @@ export default function PricingPage() {
             ))}
           </ul>
 
-          <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700 text-center">
+        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
             <button
               onClick={handleUpgrade}
               disabled={isPremium}
@@ -90,14 +89,13 @@ export default function PricingPage() {
               }`}
             >
               {isPremium ? 'Already Premium' : 'Get Premium'}
-            </button>
-          </div>
+          </button>
         </div>
-
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-          Activity Calendar is free forever
-        </p>
       </div>
+
+      <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+        Activity Calendar is free forever
+      </p>
     </div>
   );
 }
