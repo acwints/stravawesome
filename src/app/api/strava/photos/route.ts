@@ -90,58 +90,124 @@ export async function GET() {
 
     const activitiesWithPhotos: ActivityWithPhotos[] = [];
 
-    // Fetch photos for all recent activities (not just those with photo_count)
-    // because photo_count might not be reliable in the list response
+    // Fetch photos for activities with rate limiting and retry logic
     let checkedCount = 0;
     let foundCount = 0;
+    let rateLimited = false;
 
-    for (const activity of activities.slice(0, 20)) { // Check first 20 activities to reduce rate limit hits
-      checkedCount++;
-      try {
-        const photoResponse = await fetch(
-          `https://www.strava.com/api/v3/activities/${activity.id}/photos?size=600&photo_sources=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${tokenResult.accessToken}`,
-            },
+    // Helper function to add delay between requests
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Helper function to fetch photos with retry logic
+    const fetchPhotosWithRetry = async (activity: StravaActivity, retries = 3): Promise<StravaPhoto[] | null> => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          // Add delay between requests to respect rate limits
+          if (checkedCount > 0) {
+            await delay(200); // 200ms delay between requests
           }
-        );
 
-        if (photoResponse.ok) {
-          const photos: StravaPhoto[] = await photoResponse.json();
-          if (photos.length > 0) {
-            foundCount++;
-            logger.info('Found photos for activity', {
+          const photoResponse = await fetch(
+            `https://www.strava.com/api/v3/activities/${activity.id}/photos?size=600&photo_sources=true`,
+            {
+              headers: {
+                Authorization: `Bearer ${tokenResult.accessToken}`,
+              },
+            }
+          );
+
+          if (photoResponse.ok) {
+            const photos: StravaPhoto[] = await photoResponse.json();
+            return photos;
+          } else if (photoResponse.status === 429) {
+            // Rate limited - wait longer before retry
+            const retryAfter = photoResponse.headers.get('retry-after');
+            const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+            
+            logger.warn('Rate limited, waiting before retry', {
               activityId: activity.id,
-              activityName: activity.name,
-              photoCount: photos.length,
-              photoUrls: photos.map(p => p.urls[600]),
+              attempt,
+              waitTime: waitTime / 1000,
+              retryAfter,
             });
-            activitiesWithPhotos.push({
-              id: activity.id,
-              name: activity.name,
-              photos,
-            });
+            
+            if (attempt < retries) {
+              await delay(waitTime);
+              continue;
+            } else {
+              rateLimited = true;
+              return null;
+            }
           } else {
-            logger.info('No photos for activity', {
+            const errorText = await photoResponse.text();
+            logger.warn('Photo fetch failed', {
               activityId: activity.id,
               activityName: activity.name,
+              status: photoResponse.status,
+              error: errorText,
+              attempt,
             });
+            return null;
           }
-        } else {
-          const errorText = await photoResponse.text();
-          logger.warn('Photo fetch failed', {
+        } catch (error) {
+          logger.warn('Failed to fetch photos for activity', {
+            activityId: activity.id,
+            error: error instanceof Error ? error.message : String(error),
+            attempt,
+          });
+          
+          if (attempt < retries) {
+            await delay(Math.pow(2, attempt) * 1000); // Exponential backoff
+          }
+        }
+      }
+      return null;
+    };
+
+    // Process activities in smaller batches to avoid overwhelming the API
+    const activitiesToCheck = activities.slice(0, 15); // Reduced from 20 to 15
+    const batchSize = 5; // Process 5 activities at a time
+    
+    for (let i = 0; i < activitiesToCheck.length; i += batchSize) {
+      const batch = activitiesToCheck.slice(i, i + batchSize);
+      
+      // Process batch sequentially to avoid rate limits
+      for (const activity of batch) {
+        if (rateLimited) {
+          logger.warn('Stopping photo fetch due to rate limiting', {
+            checkedCount,
+            foundCount,
+            remainingActivities: activitiesToCheck.length - checkedCount,
+          });
+          break;
+        }
+
+        checkedCount++;
+        const photos = await fetchPhotosWithRetry(activity);
+        
+        if (photos && photos.length > 0) {
+          foundCount++;
+          logger.info('Found photos for activity', {
             activityId: activity.id,
             activityName: activity.name,
-            status: photoResponse.status,
-            error: errorText,
+            photoCount: photos.length,
+          });
+          activitiesWithPhotos.push({
+            id: activity.id,
+            name: activity.name,
+            photos,
+          });
+        } else if (photos !== null) {
+          logger.info('No photos for activity', {
+            activityId: activity.id,
+            activityName: activity.name,
           });
         }
-      } catch (error) {
-        logger.warn('Failed to fetch photos for activity', {
-          activityId: activity.id,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+      }
+
+      // Add delay between batches
+      if (i + batchSize < activitiesToCheck.length && !rateLimited) {
+        await delay(1000); // 1 second delay between batches
       }
     }
 
