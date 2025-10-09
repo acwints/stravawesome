@@ -4,6 +4,7 @@
 
 import { PrismaClient, Account } from '@prisma/client';
 import { logger } from './logger';
+import { stravaRequestQueue } from './strava-request-queue';
 
 interface FetchActivitiesOptions {
   cacheKey?: string;
@@ -150,7 +151,7 @@ export class StravaClient {
     perPage: number = 10,
     options: FetchActivitiesOptions = {}
   ): Promise<unknown[]> {
-    const { cacheKey, ttlMs = 5 * 60 * 1000, after, timeoutMs = 12_000 } = options;
+    const { cacheKey, ttlMs = 15 * 60 * 1000, after, timeoutMs = 12_000 } = options; // Increased to 15 minutes
     const now = Date.now();
 
     let cachedEntry: ActivitiesCacheEntry | undefined;
@@ -166,91 +167,94 @@ export class StravaClient {
       ? cachedEntry.value
       : undefined;
 
-    try {
-      const query = new URL('https://www.strava.com/api/v3/athlete/activities');
-      query.searchParams.set('per_page', Math.min(200, Math.max(perPage, 1)).toString());
-      if (after) {
-        query.searchParams.set('after', after.toString());
-      }
-
-      logger.externalApi('Strava', `GET /athlete/activities${query.search}`);
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-      let response: Response;
-
+    // Use request queue to prevent rate limiting
+    return stravaRequestQueue.enqueue(async () => {
       try {
-        response = await fetch(query, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeout);
-      }
+        const query = new URL('https://www.strava.com/api/v3/athlete/activities');
+        query.searchParams.set('per_page', Math.min(200, Math.max(perPage, 1)).toString());
+        if (after) {
+          query.searchParams.set('after', after.toString());
+        }
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          const retryAfter = response.headers.get('retry-after');
-          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 60000; // Default 1 minute
-          
-          logger.warn('Rate limited on activities fetch, using stale cache if available', {
-            retryAfter: waitTime / 1000,
-            cacheKey,
+        logger.externalApi('Strava', `GET /athlete/activities${query.search}`);
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+        let response: Response;
+
+        try {
+          response = await fetch(query, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+            signal: controller.signal,
           });
-          
-          if (staleValue) {
-            logger.warn('Using stale Strava activities cache due to rate limiting', { cacheKey, perPage });
-            return staleValue;
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            const retryAfter = response.headers.get('retry-after');
+            const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 60000; // Default 1 minute
+            
+            logger.warn('Rate limited on activities fetch, using stale cache if available', {
+              retryAfter: waitTime / 1000,
+              cacheKey,
+            });
+            
+            if (staleValue) {
+              logger.warn('Using stale Strava activities cache due to rate limiting', { cacheKey, perPage });
+              return staleValue;
+            }
+            
+            // If no stale cache available, return empty array instead of throwing
+            logger.warn('No stale cache available, returning empty activities array due to rate limiting', { cacheKey });
+            return [];
           }
           
-          // If no stale cache available, return empty array instead of throwing
-          logger.warn('No stale cache available, returning empty activities array due to rate limiting', { cacheKey });
-          return [];
+          const errorText = await response.text();
+          logger.error('Strava activities fetch failed', undefined, {
+            status: response.status,
+            error: errorText
+          });
+          if (staleValue) {
+            logger.warn('Using stale Strava activities cache after API failure', { cacheKey, perPage });
+            return staleValue;
+          }
+          throw new Error(`Strava API error: ${response.status}`);
         }
-        
-        const errorText = await response.text();
-        logger.error('Strava activities fetch failed', undefined, {
-          status: response.status,
-          error: errorText
-        });
-        if (staleValue) {
-          logger.warn('Using stale Strava activities cache after API failure', { cacheKey, perPage });
-          return staleValue;
-        }
-        throw new Error(`Strava API error: ${response.status}`);
-      }
 
-      const activities = await response.json();
-      logger.info(`Fetched ${activities.length} activities from Strava`);
+        const activities = await response.json();
+        logger.info(`Fetched ${activities.length} activities from Strava`);
 
-      if (cacheKey) {
-        activitiesCache.set(cacheKey, {
-          value: activities,
-          expiresAt: Date.now() + ttlMs,
-          requestedPerPage: perPage,
-        });
-      }
+        if (cacheKey) {
+          activitiesCache.set(cacheKey, {
+            value: activities,
+            expiresAt: Date.now() + ttlMs,
+            requestedPerPage: perPage,
+          });
+        }
 
-      return activities;
-    } catch (error) {
-      if ((error as Error)?.name === 'AbortError') {
-        logger.error('Strava activities fetch timed out', undefined, { timeoutMs, cacheKey });
-        if (staleValue) {
-          logger.warn('Using stale Strava activities cache after timeout', { cacheKey, perPage });
-          return staleValue;
+        return activities;
+      } catch (error) {
+        if ((error as Error)?.name === 'AbortError') {
+          logger.error('Strava activities fetch timed out', undefined, { timeoutMs, cacheKey });
+          if (staleValue) {
+            logger.warn('Using stale Strava activities cache after timeout', { cacheKey, perPage });
+            return staleValue;
+          }
+        } else {
+          logger.error('Error fetching activities from Strava', error);
+          if (staleValue) {
+            logger.warn('Using stale Strava activities cache after error', { cacheKey, perPage });
+            return staleValue;
+          }
         }
-      } else {
-        logger.error('Error fetching activities from Strava', error);
-        if (staleValue) {
-          logger.warn('Using stale Strava activities cache after error', { cacheKey, perPage });
-          return staleValue;
-        }
+        throw error;
       }
-      throw error;
-    }
+    }, 1, `activities_${perPage}_${after || 'all'}`); // Priority 1 for activities
   }
 
   /**
@@ -266,69 +270,72 @@ export class StravaClient {
       return cached.value;
     }
 
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        logger.externalApi('Strava', `GET /activities/${activityId}`);
+    // Use request queue to prevent rate limiting
+    return stravaRequestQueue.enqueue(async () => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          logger.externalApi('Strava', `GET /activities/${activityId}`);
 
-        const response = await fetch(
-          `https://www.strava.com/api/v3/activities/${activityId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        );
+          const response = await fetch(
+            `https://www.strava.com/api/v3/activities/${activityId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
 
-        if (response.ok) {
-          const details = await response.json();
+          if (response.ok) {
+            const details = await response.json();
 
-          // Cache for 30 minutes
-          activityDetailsCache.set(activityId, {
-            value: details,
-            expiresAt: now + 30 * 60 * 1000
-          });
+            // Cache for 30 minutes
+            activityDetailsCache.set(activityId, {
+              value: details,
+              expiresAt: now + 30 * 60 * 1000
+            });
 
-          return details;
-        } else if (response.status === 429) {
-          // Rate limited - wait before retry
-          const retryAfter = response.headers.get('retry-after');
-          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
-          
-          logger.warn('Rate limited on activity details, waiting before retry', {
-            activityId,
-            attempt,
-            waitTime: waitTime / 1000,
-            retryAfter,
-          });
-          
-          if (attempt < retries) {
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-            continue;
+            return details;
+          } else if (response.status === 429) {
+            // Rate limited - wait before retry
+            const retryAfter = response.headers.get('retry-after');
+            const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+            
+            logger.warn('Rate limited on activity details, waiting before retry', {
+              activityId,
+              attempt,
+              waitTime: waitTime / 1000,
+              retryAfter,
+            });
+            
+            if (attempt < retries) {
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            } else {
+              // If no more retries, return null instead of throwing
+              logger.warn('Max retries exceeded for activity details due to rate limiting', { activityId });
+              return null;
+            }
           } else {
-            // If no more retries, return null instead of throwing
-            logger.warn('Max retries exceeded for activity details due to rate limiting', { activityId });
-            return null;
+            const errorText = await response.text();
+            logger.error('Strava activity details fetch failed', undefined, {
+              activityId,
+              status: response.status,
+              error: errorText,
+              attempt,
+            });
+            throw new Error(`Strava API error: ${response.status}`);
           }
-        } else {
-          const errorText = await response.text();
-          logger.error('Strava activity details fetch failed', undefined, {
-            activityId,
-            status: response.status,
-            error: errorText,
-            attempt,
-          });
-          throw new Error(`Strava API error: ${response.status}`);
-        }
-      } catch (error) {
-        if (attempt === retries) {
-          logger.error('Error fetching activity details from Strava', error, { activityId });
-          throw error;
-        } else {
-          logger.warn('Retrying activity details fetch', { activityId, attempt, error });
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        } catch (error) {
+          if (attempt === retries) {
+            logger.error('Error fetching activity details from Strava', error, { activityId });
+            throw error;
+          } else {
+            logger.warn('Retrying activity details fetch', { activityId, attempt, error });
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+          }
         }
       }
-    }
+    }, 2, `activity_details_${activityId}`); // Priority 2 for activity details
   }
 
   /**

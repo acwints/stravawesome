@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import useSWR from 'swr';
 import { StravaActivity } from '@/types';
-import { fetchActivities } from '@/services/api';
+import { useDashboardData } from './DashboardDataProvider';
 import { COLORS } from '@/constants';
 
 interface DayActivity {
@@ -52,14 +51,7 @@ export default function ActivityHeatmap() {
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
 
-  const { data: activities, error, isLoading } = useSWR<StravaActivity[]>(
-    '/api/strava/activities',
-    fetchActivities,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-    }
-  );
+  const { activities, isLoading, error } = useDashboardData();
 
   if (isLoading) {
     return (

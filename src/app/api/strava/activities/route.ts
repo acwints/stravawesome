@@ -5,6 +5,7 @@ import { StravaClient } from '@/lib/strava-client';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
 import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
+import { sharedDataService } from '@/lib/shared-data-service';
 import { headers } from 'next/headers';
 
 export async function GET() {
@@ -29,6 +30,36 @@ export async function GET() {
 
     logger.debug('Fetching Strava activities', { userId: session.user.id });
 
+    // Check shared cache first to prevent duplicate calls
+    const cachedActivities = sharedDataService.getActivities(session.user.id);
+    if (cachedActivities) {
+      const duration = Date.now() - startTime;
+      logger.apiResponse('GET', '/api/strava/activities', 200, duration, {
+        activitiesCount: cachedActivities.length,
+        cache: 'shared'
+      });
+      return successResponse(cachedActivities);
+    }
+
+    // Check if another request is already in progress
+    if (!sharedDataService.shouldFetch(session.user.id)) {
+      logger.debug('Another fetch in progress, waiting...', { userId: session.user.id });
+      // Wait a bit and try again
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const retryCached = sharedDataService.getActivities(session.user.id);
+      if (retryCached) {
+        const duration = Date.now() - startTime;
+        logger.apiResponse('GET', '/api/strava/activities', 200, duration, {
+          activitiesCount: retryCached.length,
+          cache: 'shared_retry'
+        });
+        return successResponse(retryCached);
+      }
+    }
+
+    // Mark fetch in progress
+    sharedDataService.markFetchInProgress(session.user.id);
+
     const stravaClient = new StravaClient(prisma);
 
     // Get valid access token (with automatic refresh if needed)
@@ -42,7 +73,18 @@ export async function GET() {
     // Fetch activities with full details (100 for better coverage)
     // Strava allows 100 requests per 15 minutes, 1000 per day
     // Using aggressive caching to minimize repeated requests
-    const detailedActivities = await stravaClient.fetchActivitiesWithDetails(tokenResult.accessToken, 100);
+    const cacheKey = `activities:${session.user.id}:detailed`;
+    const detailedActivities = await stravaClient.fetchActivitiesWithDetails(
+      tokenResult.accessToken, 
+      100,
+      { 
+        cacheKey,
+        ttlMs: 15 * 60 * 1000 // 15 minutes cache
+      }
+    );
+
+    // Cache in shared service
+    sharedDataService.setActivities(session.user.id, detailedActivities as any);
 
     const duration = Date.now() - startTime;
     logger.apiResponse('GET', '/api/strava/activities', 200, duration, {

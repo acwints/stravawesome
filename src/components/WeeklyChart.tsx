@@ -1,6 +1,5 @@
 'use client';
 
-import useSWR from 'swr';
 import {
   BarChart,
   Bar,
@@ -12,7 +11,7 @@ import {
   TooltipProps,
 } from 'recharts';
 import { StravaActivity, ActivityData } from '@/types';
-import { fetchActivities } from '@/services/api';
+import { useDashboardData } from './DashboardDataProvider';
 import { COLORS } from '@/constants';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
@@ -49,13 +48,10 @@ export function WeeklyChartSkeleton() {
 }
 
 export default function WeeklyChart() {
-  const { data: activities, error } = useSWR<StravaActivity[]>('/api/strava/activities', fetchActivities, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false
-  });
+  const { activities, error, isLoading } = useDashboardData();
 
   if (error) return null;
-  if (!activities) return <WeeklyChartSkeleton />;
+  if (isLoading || !activities) return <WeeklyChartSkeleton />;
 
   // Process activities into individual data points for chart
   const activityData: ActivityData[] = activities

@@ -112,7 +112,7 @@ export async function GET() {
 
     const activities = await stravaClient.fetchActivities(tokenResult.accessToken, 200, {
       cacheKey: `activities:${session.user.id}:${afterEpoch}`,
-      ttlMs: 5 * 60 * 1000,
+      ttlMs: 15 * 60 * 1000, // Increased to 15 minutes
       after: afterEpoch,
     }) as StravaActivity[];
 

@@ -1,8 +1,7 @@
 'use client';
 
-import useSWR from 'swr';
 import { StravaActivity } from '@/types';
-import { fetchActivities } from '@/services/api';
+import { useDashboardData } from './DashboardDataProvider';
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 import { METERS_TO_MILES } from '@/constants';
 import { ReactElement } from 'react';
@@ -35,13 +34,10 @@ const getActivityColor = (type: string) => {
 };
 
 export default function RecentActivities() {
-  const { data: activities, error } = useSWR<StravaActivity[]>('/api/strava/activities', fetchActivities, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false
-  });
+  const { activities, error, isLoading } = useDashboardData();
 
   if (error) return null;
-  if (!activities) return null;
+  if (isLoading || !activities) return null;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">

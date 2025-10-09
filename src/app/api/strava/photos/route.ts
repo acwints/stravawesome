@@ -5,6 +5,7 @@ import { StravaClient } from '@/lib/strava-client';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
 import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
+import { stravaRequestQueue } from '@/lib/strava-request-queue';
 import { headers } from 'next/headers';
 
 interface StravaPhoto {
@@ -116,70 +117,67 @@ export async function GET() {
     // Helper function to add delay between requests
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Helper function to fetch photos with retry logic
+    // Helper function to fetch photos with retry logic using request queue
     const fetchPhotosWithRetry = async (activity: StravaActivity, retries = 3): Promise<StravaPhoto[] | null> => {
-      for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-          // Add delay between requests to respect rate limits
-          if (checkedCount > 0) {
-            await delay(200); // 200ms delay between requests
-          }
+      return stravaRequestQueue.enqueue(async () => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            const photoResponse = await fetch(
+              `https://www.strava.com/api/v3/activities/${activity.id}/photos?size=600&photo_sources=true`,
+              {
+                headers: {
+                  Authorization: `Bearer ${tokenResult.accessToken}`,
+                },
+              }
+            );
 
-          const photoResponse = await fetch(
-            `https://www.strava.com/api/v3/activities/${activity.id}/photos?size=600&photo_sources=true`,
-            {
-              headers: {
-                Authorization: `Bearer ${tokenResult.accessToken}`,
-              },
+            if (photoResponse.ok) {
+              const photos: StravaPhoto[] = await photoResponse.json();
+              return photos;
+            } else if (photoResponse.status === 429) {
+              // Rate limited - wait longer before retry
+              const retryAfter = photoResponse.headers.get('retry-after');
+              const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+              
+              logger.warn('Rate limited, waiting before retry', {
+                activityId: activity.id,
+                attempt,
+                waitTime: waitTime / 1000,
+                retryAfter,
+              });
+              
+              if (attempt < retries) {
+                await delay(waitTime);
+                continue;
+              } else {
+                rateLimited = true;
+                return null;
+              }
+            } else {
+              const errorText = await photoResponse.text();
+              logger.warn('Photo fetch failed', {
+                activityId: activity.id,
+                activityName: activity.name,
+                status: photoResponse.status,
+                error: errorText,
+                attempt,
+              });
+              return null;
             }
-          );
-
-          if (photoResponse.ok) {
-            const photos: StravaPhoto[] = await photoResponse.json();
-            return photos;
-          } else if (photoResponse.status === 429) {
-            // Rate limited - wait longer before retry
-            const retryAfter = photoResponse.headers.get('retry-after');
-            const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
-            
-            logger.warn('Rate limited, waiting before retry', {
+          } catch (error) {
+            logger.warn('Failed to fetch photos for activity', {
               activityId: activity.id,
+              error: error instanceof Error ? error.message : String(error),
               attempt,
-              waitTime: waitTime / 1000,
-              retryAfter,
             });
             
             if (attempt < retries) {
-              await delay(waitTime);
-              continue;
-            } else {
-              rateLimited = true;
-              return null;
+              await delay(Math.pow(2, attempt) * 1000); // Exponential backoff
             }
-          } else {
-            const errorText = await photoResponse.text();
-            logger.warn('Photo fetch failed', {
-              activityId: activity.id,
-              activityName: activity.name,
-              status: photoResponse.status,
-              error: errorText,
-              attempt,
-            });
-            return null;
-          }
-        } catch (error) {
-          logger.warn('Failed to fetch photos for activity', {
-            activityId: activity.id,
-            error: error instanceof Error ? error.message : String(error),
-            attempt,
-          });
-          
-          if (attempt < retries) {
-            await delay(Math.pow(2, attempt) * 1000); // Exponential backoff
           }
         }
-      }
-      return null;
+        return null;
+      }, 3, `photos_${activity.id}`); // Priority 3 for photos
     };
 
     // Process activities in smaller batches to avoid overwhelming the API

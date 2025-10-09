@@ -11,6 +11,7 @@ import AIChat from '@/components/AIChat';
 import TrainingMapWrapper from '@/components/TrainingMapWrapper';
 import PhotoGallery from '@/components/PhotoGallery';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
+import { DashboardDataProvider } from '@/components/DashboardDataProvider';
 import { Session } from "next-auth";
 
 function LoadingSpinner() {
@@ -105,5 +106,9 @@ export default function DashboardPage() {
 
   if (!session) return null;
 
-  return <DashboardContent session={session} />;
+  return (
+    <DashboardDataProvider>
+      <DashboardContent session={session} />
+    </DashboardDataProvider>
+  );
 } 
