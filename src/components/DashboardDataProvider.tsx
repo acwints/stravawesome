@@ -59,6 +59,18 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
               });
             }
           }
+        } else if (err.code === 'BAD_REQUEST' || err.status === 400) {
+          setActivities(null);
+          if (sessionUser && sessionUser.stravaConnected) {
+            if (typeof update === 'function') {
+              await update({
+                user: {
+                  ...sessionUser,
+                  stravaConnected: false,
+                },
+              });
+            }
+          }
         }
       } else {
         setError(err instanceof Error ? err.message : 'Unknown error');
