@@ -10,6 +10,7 @@ interface FetchActivitiesOptions {
   ttlMs?: number;
   after?: number;
   timeoutMs?: number;
+  retryOn429?: boolean;
 }
 
 interface ActivitiesCacheEntry {
