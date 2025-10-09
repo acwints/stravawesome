@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { StravaActivity } from '@/types';
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
-import { METERS_TO_MILES, COLORS } from '@/constants';
+import { METERS_TO_MILES } from '@/constants';
 import { useEffect } from 'react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
