@@ -11,7 +11,6 @@ import AIChat from '@/components/AIChat';
 import TrainingMapWrapper from '@/components/TrainingMapWrapper';
 import PhotoGallery from '@/components/PhotoGallery';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
-import PremiumGate from '@/components/PremiumGate';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Session } from "next-auth";
 
@@ -49,12 +48,6 @@ function DashboardContent({ session }: { session: Session }) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-
-      {/* AI Chat - Full Width at Top - Premium */}
-      <PremiumGate isPremium={isPremium || subscriptionLoading} featureName="AI Training Coach">
-        <AIChat />
-      </PremiumGate>
-
       {/* Activity Heatmap - FREE */}
       <Suspense fallback={
         <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
@@ -65,51 +58,58 @@ function DashboardContent({ session }: { session: Session }) {
         <ActivityHeatmap />
       </Suspense>
 
-      {/* Goals Progress - Premium */}
-      <PremiumGate isPremium={isPremium || subscriptionLoading} featureName="Goal Tracking">
-        <Suspense fallback={<GoalsSkeleton />}>
-          <GoalsProgress />
-        </Suspense>
-      </PremiumGate>
+      {/* Everything else - Single Premium Gate */}
+      {isPremium || subscriptionLoading ? (
+        <>
+          <AIChat />
 
-      {/* Weekly Chart - Premium */}
-      <PremiumGate isPremium={isPremium || subscriptionLoading} featureName="Weekly Activity Chart">
-        <Suspense fallback={<WeeklyChartSkeleton />}>
-          <WeeklyChart />
-        </Suspense>
-      </PremiumGate>
-
-      {/* Recent Activities - Premium */}
-      <PremiumGate isPremium={isPremium || subscriptionLoading} featureName="Activity List">
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
-          <Suspense fallback={<RecentActivitiesSkeleton />}>
-            <RecentActivities />
+          <Suspense fallback={<GoalsSkeleton />}>
+            <GoalsProgress />
           </Suspense>
-        </div>
-      </PremiumGate>
 
-      {/* Photo Gallery - Premium */}
-      <PremiumGate isPremium={isPremium || subscriptionLoading} featureName="Photo Gallery">
-        <Suspense fallback={
-          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-            <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-              ))}
-            </div>
+          <Suspense fallback={<WeeklyChartSkeleton />}>
+            <WeeklyChart />
+          </Suspense>
+
+          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300">
+            <Suspense fallback={<RecentActivitiesSkeleton />}>
+              <RecentActivities />
+            </Suspense>
           </div>
-        }>
-          <PhotoGallery />
-        </Suspense>
-      </PremiumGate>
 
-      {/* Training Map - Premium */}
-      <PremiumGate isPremium={isPremium || subscriptionLoading} featureName="Training Map">
-        <div className="grid grid-cols-1 gap-6">
-          <TrainingMapWrapper />
+          <Suspense fallback={
+            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            </div>
+          }>
+            <PhotoGallery />
+          </Suspense>
+
+          <div className="grid grid-cols-1 gap-6">
+            <TrainingMapWrapper />
+          </div>
+        </>
+      ) : (
+        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-12 border border-gray-100 dark:border-gray-700 text-center">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            Unlock All Features
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Get access to AI insights, training maps, photo gallery, and more for just <span className="font-bold text-primary-600 dark:text-primary-400">$12/year</span>
+          </p>
+          <a
+            href="/pricing"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors"
+          >
+            View Premium Features
+          </a>
         </div>
-      </PremiumGate>
+      )}
     </div>
   );
 }
