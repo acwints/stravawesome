@@ -177,20 +177,34 @@ export default function ActivityHeatmap() {
       </div>
 
       <div className="overflow-x-auto">
-        <div className="inline-flex gap-1">
+        <div className="inline-flex flex-col gap-1">
           {/* Month labels */}
-          <div className="flex flex-col justify-around text-xs text-gray-500 dark:text-gray-400 pr-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
-              <div key={i} className="h-3 flex items-center">
-                {i % 2 === 1 ? day : ''}
-              </div>
-            ))}
+          <div className="flex gap-1 pl-14">
+            {weeks.map((week, weekIdx) => {
+              const firstDay = week[0];
+              const showMonth = firstDay.getDate() <= 7 || weekIdx === 0;
+              return (
+                <div key={weekIdx} className="w-3 text-xs text-gray-500 dark:text-gray-400">
+                  {showMonth ? firstDay.toLocaleDateString('en-US', { month: 'short' }).charAt(0) : ''}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Heatmap grid */}
           <div className="flex gap-1">
-            {weeks.map((week, weekIdx) => (
-              <div key={weekIdx} className="flex flex-col gap-1">
+            {/* Day labels */}
+            <div className="flex flex-col justify-around text-xs text-gray-500 dark:text-gray-400 pr-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                <div key={i} className="h-3 flex items-center">
+                  {i % 2 === 1 ? day : ''}
+                </div>
+              ))}
+            </div>
+
+            {/* Heatmap grid */}
+            <div className="flex gap-1">
+              {weeks.map((week, weekIdx) => (
+                <div key={weekIdx} className="flex flex-col gap-1">
                 {week.map((day, dayIdx) => {
                   const dayData = getDayData(day);
                   const dateStr = day.toDateString();
@@ -221,9 +235,10 @@ export default function ActivityHeatmap() {
                       }}
                     />
                   );
-                })}
-              </div>
-            ))}
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

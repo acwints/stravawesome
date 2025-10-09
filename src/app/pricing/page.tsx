@@ -54,8 +54,11 @@ export default function PricingPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
           Premium Features
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          $12/year
+        <p className="text-gray-600 dark:text-gray-400 mb-1">
+          <span className="font-semibold">$12/year</span> after 7-day free trial
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-500">
+          Cancel anytime before trial ends — no charge
         </p>
       </div>
 
@@ -88,7 +91,7 @@ export default function PricingPage() {
                   : 'bg-primary-600 hover:bg-primary-700 text-white'
               }`}
             >
-              {isPremium ? 'Already Premium' : 'Get Premium'}
+              {isPremium ? 'Already Premium' : 'Start Free Trial'}
           </button>
         </div>
       </div>
