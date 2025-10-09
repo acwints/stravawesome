@@ -10,6 +10,7 @@ import WeeklyChart from '@/components/WeeklyChart';
 import AIChat from '@/components/AIChat';
 import TrainingMapWrapper from '@/components/TrainingMapWrapper';
 import PhotoGallery from '@/components/PhotoGallery';
+import ActivityHeatmap from '@/components/ActivityHeatmap';
 import { Session } from "next-auth";
 
 function LoadingSpinner() {
@@ -47,6 +48,16 @@ function DashboardContent({ session }: { session: Session }) {
 
       {/* AI Chat - Full Width at Top */}
       <AIChat />
+
+      {/* Activity Heatmap */}
+      <Suspense fallback={
+        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
+          <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />
+        </div>
+      }>
+        <ActivityHeatmap />
+      </Suspense>
 
       {/* Goals Progress */}
       <Suspense fallback={<GoalsSkeleton />}>
