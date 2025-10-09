@@ -182,10 +182,11 @@ export default function ActivityHeatmap() {
           <div className="flex gap-1 pl-14">
             {weeks.map((week, weekIdx) => {
               const firstDay = week[0];
-              const showMonth = firstDay.getDate() <= 7 || weekIdx === 0;
+              const prevWeek = weeks[weekIdx - 1];
+              const showMonth = weekIdx === 0 || (prevWeek && prevWeek[0].getMonth() !== firstDay.getMonth());
               return (
-                <div key={weekIdx} className="w-3 text-xs text-gray-500 dark:text-gray-400">
-                  {showMonth ? firstDay.toLocaleDateString('en-US', { month: 'short' }).charAt(0) : ''}
+                <div key={weekIdx} className="text-[10px] text-gray-500 dark:text-gray-400" style={{ width: '12px' }}>
+                  {showMonth ? firstDay.toLocaleDateString('en-US', { month: 'short' }) : ''}
                 </div>
               );
             })}
