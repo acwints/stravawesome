@@ -1,6 +1,5 @@
 'use client';
 
-import { StravaActivity } from '@/types';
 import { useDashboardData } from './DashboardDataProvider';
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 import { METERS_TO_MILES } from '@/constants';

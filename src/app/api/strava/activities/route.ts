@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
 import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
 import { sharedDataService } from '@/lib/shared-data-service';
+import { StravaActivity } from '@/types';
 import { headers } from 'next/headers';
 
 export async function GET() {
@@ -84,7 +85,7 @@ export async function GET() {
     );
 
     // Cache in shared service
-    sharedDataService.setActivities(session.user.id, detailedActivities as any);
+    sharedDataService.setActivities(session.user.id, detailedActivities as StravaActivity[]);
 
     const duration = Date.now() - startTime;
     logger.apiResponse('GET', '/api/strava/activities', 200, duration, {

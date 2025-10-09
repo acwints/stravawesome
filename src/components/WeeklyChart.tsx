@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   TooltipProps,
 } from 'recharts';
-import { StravaActivity, ActivityData } from '@/types';
+import { ActivityData } from '@/types';
 import { useDashboardData } from './DashboardDataProvider';
 import { COLORS } from '@/constants';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';

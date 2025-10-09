@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { StravaActivity } from '@/types';
 
@@ -25,8 +25,9 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
   const [activities, setActivities] = useState<StravaActivity[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasFetched = useRef(false);
 
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     if (!session?.user?.id) return;
 
     setIsLoading(true);
@@ -46,14 +47,15 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session?.user?.id]);
 
   const refetch = () => {
     fetchActivities();
   };
 
   useEffect(() => {
-    if (session?.user?.id && !activities) {
+    if (session?.user?.id && !hasFetched.current) {
+      hasFetched.current = true;
       // Add a small delay to prevent immediate concurrent calls
       const timer = setTimeout(() => {
         fetchActivities();
@@ -61,7 +63,7 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
       
       return () => clearTimeout(timer);
     }
-  }, [session?.user?.id]);
+  }, [session?.user?.id, fetchActivities]);
 
   const value: DashboardContextType = {
     activities,
