@@ -28,7 +28,10 @@ async function fetchPhotos(): Promise<ActivityWithPhotos[]> {
   if (!response.ok) {
     throw new Error('Failed to fetch photos');
   }
-  return response.json();
+  const json = await response.json();
+  console.log('[fetchPhotos] Raw API response:', json);
+  // API returns { success: true, data: [...] }
+  return json.data || [];
 }
 
 export default function PhotoGallery() {
@@ -42,6 +45,11 @@ export default function PhotoGallery() {
   );
 
   const [selectedPhoto, setSelectedPhoto] = useState<StravaPhoto | null>(null);
+
+  // Debug logging
+  if (typeof window !== 'undefined') {
+    console.log('[PhotoGallery] Data:', activities, 'Type:', typeof activities, 'IsArray:', Array.isArray(activities));
+  }
 
   if (isLoading) {
     return (
@@ -64,14 +72,23 @@ export default function PhotoGallery() {
   }
 
   if (error) {
+    console.error('[PhotoGallery] Error:', error);
+    return null;
+  }
+
+  // Ensure activities is an array before processing
+  if (!activities || !Array.isArray(activities)) {
+    console.warn('[PhotoGallery] Activities is not an array:', activities);
     return null;
   }
 
   const allPhotos: { photo: StravaPhoto; activityName: string }[] = [];
-  activities?.forEach((activity) => {
-    activity.photos.forEach((photo) => {
-      allPhotos.push({ photo, activityName: activity.name });
-    });
+  activities.forEach((activity) => {
+    if (activity.photos && Array.isArray(activity.photos)) {
+      activity.photos.forEach((photo) => {
+        allPhotos.push({ photo, activityName: activity.name });
+      });
+    }
   });
 
   if (allPhotos.length === 0) {
