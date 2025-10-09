@@ -5,6 +5,7 @@ import { StravaClient } from '@/lib/strava-client';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
 import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
+import { sharedDataService } from '@/lib/shared-data-service';
 import { headers } from 'next/headers';
 import { startOfWeek, endOfWeek, subWeeks, startOfMonth, subDays } from 'date-fns';
 
@@ -110,11 +111,27 @@ export async function GET() {
     const thirtyDaysAgo = subDays(referenceDate, 30);
     const afterEpoch = Math.floor(thirtyDaysAgo.getTime() / 1000);
 
-    const activities = await stravaClient.fetchActivities(tokenResult.accessToken, 200, {
-      cacheKey: `activities:${session.user.id}:${afterEpoch}`,
-      ttlMs: 15 * 60 * 1000, // Increased to 15 minutes
-      after: afterEpoch,
-    }) as StravaActivity[];
+    // Check shared cache first to avoid duplicate API calls
+    const sharedActivities = sharedDataService.getActivities(session.user.id);
+    let activities: StravaActivity[];
+    
+    if (sharedActivities) {
+      // Filter shared activities by date range
+      activities = sharedActivities.filter(activity => {
+        const activityDate = new Date(activity.start_date);
+        return activityDate >= thirtyDaysAgo;
+      });
+      logger.info('Using shared activities for insights', { 
+        activityCount: activities.length,
+        userId: session.user.id 
+      });
+    } else {
+      activities = await stravaClient.fetchActivities(tokenResult.accessToken, 200, {
+        cacheKey: `activities:${session.user.id}:${afterEpoch}`,
+        ttlMs: 15 * 60 * 1000, // Increased to 15 minutes
+        after: afterEpoch,
+      }) as StravaActivity[];
+    }
 
     // Calculate insights
     const weekStart = startOfWeek(referenceDate, { weekStartsOn: 1 }); // Monday

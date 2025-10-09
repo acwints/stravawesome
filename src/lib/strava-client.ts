@@ -5,6 +5,7 @@
 import { PrismaClient, Account } from '@prisma/client';
 import { logger } from './logger';
 import { stravaRequestQueue } from './strava-request-queue';
+import { sharedDataService } from './shared-data-service';
 
 interface FetchActivitiesOptions {
   cacheKey?: string;
@@ -204,14 +205,25 @@ export class StravaClient {
               cacheKey,
             });
             
-            if (staleValue) {
-              logger.warn('Using stale Strava activities cache due to rate limiting', { cacheKey, perPage });
-              return staleValue;
+          if (staleValue) {
+            logger.warn('Using stale Strava activities cache due to rate limiting', { cacheKey, perPage });
+            return staleValue;
+          }
+          
+          // If no stale cache available, try to get from shared cache
+          // Extract userId from cacheKey if available
+          const userId = cacheKey?.split(':')[1];
+          if (userId) {
+            const sharedActivities = sharedDataService.getActivities(userId);
+            if (sharedActivities) {
+              logger.warn('Using shared activities cache due to rate limiting', { cacheKey, perPage });
+              return sharedActivities.slice(0, perPage);
             }
-            
-            // If no stale cache available, return empty array instead of throwing
-            logger.warn('No stale cache available, returning empty activities array due to rate limiting', { cacheKey });
-            return [];
+          }
+          
+          // If no cache available, return empty array instead of throwing
+          logger.warn('No cache available, returning empty activities array due to rate limiting', { cacheKey });
+          return [];
           }
           
           const errorText = await response.text();

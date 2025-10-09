@@ -84,12 +84,21 @@ export async function GET() {
       }
     );
 
+    // If no activities found, this might be a new user or rate limiting
+    if (!detailedActivities || detailedActivities.length === 0) {
+      logger.warn('No activities found for user', { 
+        userId: session.user.id,
+        cacheKey 
+      });
+    }
+
     // Cache in shared service
     sharedDataService.setActivities(session.user.id, detailedActivities as StravaActivity[]);
 
     const duration = Date.now() - startTime;
     logger.apiResponse('GET', '/api/strava/activities', 200, duration, {
-      activitiesCount: detailedActivities.length
+      activitiesCount: detailedActivities.length,
+      cache: 'fresh'
     });
 
     return successResponse(detailedActivities);
