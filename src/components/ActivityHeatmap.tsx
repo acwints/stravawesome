@@ -161,18 +161,14 @@ export default function ActivityHeatmap() {
           <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Activity Calendar {currentYear}</h3>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <span>Less</span>
-          <div className="flex gap-1">
-            {[0.2, 0.4, 0.6, 0.8, 1.0].map((opacity) => (
-              <div
-                key={opacity}
-                className="w-3 h-3 rounded-sm"
-                style={{ backgroundColor: `rgba(252, 76, 2, ${opacity})` }}
-              />
-            ))}
-          </div>
-          <span>More</span>
+        {/* Activity Type Legend */}
+        <div className="flex flex-wrap gap-4 text-xs">
+          {Object.entries(ACTIVITY_COLORS).map(([type, color]) => (
+            <div key={type} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
+              <span className="text-gray-600 dark:text-gray-400">{type}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -294,17 +290,6 @@ export default function ActivityHeatmap() {
         </div>
       )}
 
-      {/* Legend */}
-      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex flex-wrap gap-4 text-xs">
-          {Object.entries(ACTIVITY_COLORS).map(([type, color]) => (
-            <div key={type} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
-              <span className="text-gray-600 dark:text-gray-400">{type}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
