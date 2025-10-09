@@ -158,10 +158,14 @@ export async function GET() {
     });
 
     const duration = Date.now() - startTime;
-    logger.apiResponse('GET', '/api/strava/photos', 200, duration, {
+    const summary = {
       activitiesWithPhotos: activitiesWithPhotos.length,
       totalPhotos: activitiesWithPhotos.reduce((sum, a) => sum + a.photos.length, 0),
-    });
+      checkedActivities: checkedCount,
+      totalActivities: activities.length,
+    };
+
+    logger.apiResponse('GET', '/api/strava/photos', 200, duration, summary);
 
     return successResponse(activitiesWithPhotos);
   });
