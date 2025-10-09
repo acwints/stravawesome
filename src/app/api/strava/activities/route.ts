@@ -39,9 +39,10 @@ export async function GET() {
       return ErrorResponses.badRequest('Strava account not connected. Please connect your Strava account.');
     }
 
-    // Fetch activities with full details (30 to avoid rate limits)
+    // Fetch activities with full details (100 for better coverage)
     // Strava allows 100 requests per 15 minutes, 1000 per day
-    const detailedActivities = await stravaClient.fetchActivitiesWithDetails(tokenResult.accessToken, 30);
+    // Using aggressive caching to minimize repeated requests
+    const detailedActivities = await stravaClient.fetchActivitiesWithDetails(tokenResult.accessToken, 100);
 
     const duration = Date.now() - startTime;
     logger.apiResponse('GET', '/api/strava/activities', 200, duration, {

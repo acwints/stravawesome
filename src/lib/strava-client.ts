@@ -20,6 +20,7 @@ interface ActivitiesCacheEntry {
 }
 
 const activitiesCache = new Map<string, ActivitiesCacheEntry>();
+const activityDetailsCache = new Map<number, { value: unknown; expiresAt: number }>();
 
 export interface StravaTokenRefreshResult {
   access_token: string;
@@ -237,6 +238,15 @@ export class StravaClient {
    * Fetch detailed activity data including GPS coordinates
    */
   async fetchActivityDetails(accessToken: string, activityId: number): Promise<unknown> {
+    // Check cache first (30 min TTL)
+    const cached = activityDetailsCache.get(activityId);
+    const now = Date.now();
+
+    if (cached && cached.expiresAt > now) {
+      logger.debug('Serving cached activity details', { activityId });
+      return cached.value;
+    }
+
     try {
       logger.externalApi('Strava', `GET /activities/${activityId}`);
 
@@ -259,7 +269,15 @@ export class StravaClient {
         throw new Error(`Strava API error: ${response.status}`);
       }
 
-      return await response.json();
+      const details = await response.json();
+
+      // Cache for 30 minutes
+      activityDetailsCache.set(activityId, {
+        value: details,
+        expiresAt: now + 30 * 60 * 1000
+      });
+
+      return details;
     } catch (error) {
       logger.error('Error fetching activity details from Strava', error, { activityId });
       throw error;
