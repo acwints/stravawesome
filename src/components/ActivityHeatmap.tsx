@@ -177,35 +177,40 @@ export default function ActivityHeatmap() {
       </div>
 
       <div className="overflow-x-auto">
-        <div className="inline-flex flex-col gap-1">
+        <div className="min-w-full">
           {/* Month labels */}
-          <div className="flex gap-1 pl-14">
+          <div className="grid gap-1 pl-14 mb-1" style={{ 
+            gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
+            maxWidth: '100%'
+          }}>
             {weeks.map((week, weekIdx) => {
               const firstDay = week[0];
               const prevWeek = weeks[weekIdx - 1];
               const showMonth = weekIdx === 0 || (prevWeek && prevWeek[0].getMonth() !== firstDay.getMonth());
               return (
-                <div key={weekIdx} className="text-[10px] text-gray-500 dark:text-gray-400" style={{ width: '12px' }}>
+                <div key={weekIdx} className="text-[10px] text-gray-500 dark:text-gray-400 text-center">
                   {showMonth ? firstDay.toLocaleDateString('en-US', { month: 'short' }) : ''}
                 </div>
               );
             })}
           </div>
 
-          <div className="flex gap-1">
+          <div className="grid gap-1" style={{ 
+            gridTemplateColumns: `auto repeat(${weeks.length}, 1fr)`,
+            maxWidth: '100%'
+          }}>
             {/* Day labels */}
             <div className="flex flex-col justify-around text-xs text-gray-500 dark:text-gray-400 pr-2">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
-                <div key={i} className="h-3 flex items-center">
+                <div key={i} className="flex items-center" style={{ height: 'calc(100% / 7)' }}>
                   {i % 2 === 1 ? day : ''}
                 </div>
               ))}
             </div>
 
-            {/* Heatmap grid */}
-            <div className="flex gap-1">
-              {weeks.map((week, weekIdx) => (
-                <div key={weekIdx} className="flex flex-col gap-1">
+            {/* Heatmap grid - each week column */}
+            {weeks.map((week, weekIdx) => (
+              <div key={weekIdx} className="grid gap-1" style={{ gridTemplateRows: 'repeat(7, 1fr)' }}>
                 {week.map((day, dayIdx) => {
                   const dayData = getDayData(day);
                   const dateStr = day.toDateString();
@@ -215,12 +220,14 @@ export default function ActivityHeatmap() {
                   return (
                     <div
                       key={dayIdx}
-                      className={`w-3 h-3 rounded-sm transition-all duration-200 cursor-pointer ${
+                      className={`rounded-sm transition-all duration-200 cursor-pointer aspect-square ${
                         isToday ? 'ring-2 ring-primary-500' : ''
                       } ${hoveredDay === dateStr ? 'scale-125 z-10' : ''}`}
                       style={{
                         backgroundColor: isFuture ? '#f5f5f5' : getDayColor(day),
                         opacity: !isCurrentMonth(day) && !dayData ? 0.3 : 1,
+                        minWidth: '8px',
+                        minHeight: '8px',
                       }}
                       onMouseEnter={(e) => {
                         setHoveredDay(dateStr);
@@ -236,10 +243,9 @@ export default function ActivityHeatmap() {
                       }}
                     />
                   );
-                  })}
-                </div>
-              ))}
-            </div>
+                })}
+              </div>
+            ))}
           </div>
         </div>
       </div>
