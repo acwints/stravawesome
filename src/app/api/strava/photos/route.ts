@@ -77,8 +77,8 @@ export async function GET() {
       return ErrorResponses.badRequest('Strava account not connected.');
     }
 
-    // Fetch recent activities (last 20 to reduce API calls)
-    const activities = await stravaClient.fetchActivities(tokenResult.accessToken, 20, {
+    // Fetch recent activities (last 100 to get more photos)
+    const activities = await stravaClient.fetchActivities(tokenResult.accessToken, 100, {
       cacheKey: `activities:${session.user.id}:photos`,
       ttlMs: 10 * 60 * 1000, // 10 minutes
     }) as StravaActivity[];
@@ -95,7 +95,7 @@ export async function GET() {
     let checkedCount = 0;
     let foundCount = 0;
 
-    for (const activity of activities.slice(0, 15)) { // Check first 15 activities
+    for (const activity of activities.slice(0, 50)) { // Check first 50 activities
       checkedCount++;
       try {
         const photoResponse = await fetch(
