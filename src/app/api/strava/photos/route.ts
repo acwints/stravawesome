@@ -92,7 +92,11 @@ export async function GET() {
 
     // Fetch photos for all recent activities (not just those with photo_count)
     // because photo_count might not be reliable in the list response
+    let checkedCount = 0;
+    let foundCount = 0;
+
     for (const activity of activities.slice(0, 15)) { // Check first 15 activities
+      checkedCount++;
       try {
         const photoResponse = await fetch(
           `https://www.strava.com/api/v3/activities/${activity.id}/photos?size=600&photo_sources=true`,
@@ -106,20 +110,31 @@ export async function GET() {
         if (photoResponse.ok) {
           const photos: StravaPhoto[] = await photoResponse.json();
           if (photos.length > 0) {
+            foundCount++;
             logger.info('Found photos for activity', {
               activityId: activity.id,
-              photoCount: photos.length
+              activityName: activity.name,
+              photoCount: photos.length,
+              photoUrls: photos.map(p => p.urls[600]),
             });
             activitiesWithPhotos.push({
               id: activity.id,
               name: activity.name,
               photos,
             });
+          } else {
+            logger.info('No photos for activity', {
+              activityId: activity.id,
+              activityName: activity.name,
+            });
           }
         } else {
+          const errorText = await photoResponse.text();
           logger.warn('Photo fetch failed', {
             activityId: activity.id,
-            status: photoResponse.status
+            activityName: activity.name,
+            status: photoResponse.status,
+            error: errorText,
           });
         }
       } catch (error) {
@@ -129,6 +144,13 @@ export async function GET() {
         });
       }
     }
+
+    logger.info('Photo fetch summary', {
+      totalActivities: activities.length,
+      checkedActivities: checkedCount,
+      activitiesWithPhotos: foundCount,
+      totalPhotos: activitiesWithPhotos.reduce((sum, a) => sum + a.photos.length, 0),
+    });
 
     photosCache.set(cacheKey, {
       data: activitiesWithPhotos,
