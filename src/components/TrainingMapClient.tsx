@@ -93,25 +93,58 @@ export default function TrainingMapClient({ activities }: TrainingMapClientProps
     );
   }
 
-  // Calculate bounds to fit all routes and markers
-  const allPoints: L.LatLngExpression[] = [];
+  // Smart map center calculation
+  // Strategy: Use most recent activity location, or calculate centroid of recent activities
+  const getMapCenter = (): { center: L.LatLngExpression; zoom: number } | { bounds: L.LatLngBounds } => {
+    // Get the 5 most recent activities with location data
+    const recentActivities = [...activitiesWithLocation]
+      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+      .slice(0, 5);
 
-  // Add route points
-  activitiesWithRoutes.forEach((activity) => {
-    if (activity.map?.summary_polyline) {
-      const routePoints = decodePolyline(activity.map.summary_polyline);
-      allPoints.push(...routePoints);
+    if (recentActivities.length === 0) {
+      // Fallback to routes if no start locations
+      if (activitiesWithRoutes.length > 0) {
+        const firstRoute = activitiesWithRoutes[0];
+        if (firstRoute.map?.summary_polyline) {
+          const routePoints = decodePolyline(firstRoute.map.summary_polyline);
+          return { center: routePoints[0], zoom: 13 };
+        }
+      }
+      // Ultimate fallback
+      return { center: [40.7128, -74.0060] as L.LatLngExpression, zoom: 10 };
     }
-  });
 
-  // Add start points
-  activitiesWithLocation.forEach((activity) => {
-    if (activity.start_latlng) {
-      allPoints.push(activity.start_latlng as L.LatLngExpression);
+    if (recentActivities.length === 1) {
+      // Single activity - center on it with good zoom
+      return { center: recentActivities[0].start_latlng! as L.LatLngExpression, zoom: 13 };
     }
-  });
 
-  const mapBounds = allPoints.length > 0 ? L.latLngBounds(allPoints) : undefined;
+    // Multiple recent activities - calculate centroid
+    const latSum = recentActivities.reduce((sum, a) => sum + a.start_latlng![0], 0);
+    const lngSum = recentActivities.reduce((sum, a) => sum + a.start_latlng![1], 0);
+    const centroid: L.LatLngExpression = [
+      latSum / recentActivities.length,
+      lngSum / recentActivities.length
+    ];
+
+    // Calculate approximate zoom based on spread of points
+    const lats = recentActivities.map(a => a.start_latlng![0]);
+    const lngs = recentActivities.map(a => a.start_latlng![1]);
+    const latRange = Math.max(...lats) - Math.min(...lats);
+    const lngRange = Math.max(...lngs) - Math.min(...lngs);
+    const maxRange = Math.max(latRange, lngRange);
+
+    // Determine zoom level based on spread
+    let zoom = 13;
+    if (maxRange > 1) zoom = 9;      // Very spread out
+    else if (maxRange > 0.5) zoom = 10;
+    else if (maxRange > 0.2) zoom = 11;
+    else if (maxRange > 0.1) zoom = 12;
+
+    return { center: centroid, zoom };
+  };
+
+  const mapConfig = getMapCenter();
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -146,10 +179,11 @@ export default function TrainingMapClient({ activities }: TrainingMapClientProps
       </div>
       <div className="h-[600px] w-full">
         <MapContainer
-          bounds={mapBounds}
+          center={'center' in mapConfig ? mapConfig.center : undefined}
+          zoom={'zoom' in mapConfig ? mapConfig.zoom : undefined}
+          bounds={'bounds' in mapConfig ? mapConfig.bounds : undefined}
           boundsOptions={{ padding: [30, 30] }}
           className="h-full w-full"
-          zoom={10}
         >
           {/* Dark mode map tiles - better contrast for routes */}
           <TileLayer
