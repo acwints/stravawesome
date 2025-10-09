@@ -50,6 +50,7 @@ function getWeeksInYear(year: number): Date[][] {
 export default function ActivityHeatmap() {
   const currentYear = new Date().getFullYear();
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
 
   const { data: activities, error, isLoading } = useSWR<StravaActivity[]>(
     '/api/strava/activities',
@@ -206,9 +207,18 @@ export default function ActivityHeatmap() {
                         backgroundColor: isFuture ? '#f5f5f5' : getDayColor(day),
                         opacity: !isCurrentMonth(day) && !dayData ? 0.3 : 1,
                       }}
-                      onMouseEnter={() => setHoveredDay(dateStr)}
-                      onMouseLeave={() => setHoveredDay(null)}
-                      title={dayData ? `${day.toLocaleDateString()}: ${dayData.count} ${dayData.count === 1 ? 'activity' : 'activities'}, ${Math.round(dayData.totalCalories)} cal` : day.toLocaleDateString()}
+                      onMouseEnter={(e) => {
+                        setHoveredDay(dateStr);
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setTooltipPosition({
+                          x: rect.left + rect.width / 2,
+                          y: rect.top - 10
+                        });
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredDay(null);
+                        setTooltipPosition(null);
+                      }}
                     />
                   );
                 })}
@@ -218,20 +228,47 @@ export default function ActivityHeatmap() {
         </div>
       </div>
 
-      {/* Tooltip */}
-      {hoveredDay && activityMap.get(hoveredDay) && (
-        <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {new Date(hoveredDay).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-          </p>
-          {activityMap.get(hoveredDay)?.activities.map((activity, idx) => (
-            <div key={idx} className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-              • {activity.type}: {(activity.distance * 0.000621371).toFixed(2)} mi
+      {/* Floating Tooltip */}
+      {hoveredDay && activityMap.get(hoveredDay) && tooltipPosition && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{
+            left: `${tooltipPosition.x}px`,
+            top: `${tooltipPosition.y}px`,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          <div className="bg-gray-900 dark:bg-gray-800 text-white rounded-lg shadow-xl border border-gray-700 p-3 max-w-xs">
+            <p className="text-sm font-semibold mb-2">
+              {new Date(hoveredDay).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </p>
+            <div className="space-y-1">
+              {activityMap.get(hoveredDay)?.activities.map((activity, idx) => (
+                <div key={idx} className="text-xs flex items-center gap-2">
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{
+                      backgroundColor: activity.type === 'Run' ? '#fc4c02' :
+                                     activity.type === 'Ride' ? '#87CEEB' :
+                                     activity.type === 'Walk' ? '#f59e0b' : '#22c55e'
+                    }}
+                  />
+                  <span className="text-gray-200">
+                    {activity.type}: {(activity.distance * 0.000621371).toFixed(2)} mi
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            ~{Math.round(activityMap.get(hoveredDay)!.totalCalories)} calories
-          </p>
+            <div className="mt-2 pt-2 border-t border-gray-700">
+              <p className="text-xs text-gray-400">
+                ~{Math.round(activityMap.get(hoveredDay)!.totalCalories)} calories
+              </p>
+            </div>
+            {/* Tooltip arrow */}
+            <div
+              className="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-900 dark:border-t-gray-800"
+            />
+          </div>
         </div>
       )}
 

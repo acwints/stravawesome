@@ -16,6 +16,8 @@
     "@auth/core": "0.34.2",
     "@auth/prisma-adapter": "^2.7.4",
     "@auth/supabase-adapter": "^1.7.4",
+    "@polar-sh/nextjs": "^0.4.9",
+    "@polar-sh/sdk": "^0.35.4",
     "@prisma/client": "^6.2.1",
     "@supabase/supabase-js": "^2.47.13",
     "@types/leaflet": "^1.9.20",
