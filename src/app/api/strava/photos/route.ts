@@ -77,19 +77,22 @@ export async function GET() {
       return ErrorResponses.badRequest('Strava account not connected.');
     }
 
-    // Fetch recent activities (last 30)
-    const activities = await stravaClient.fetchActivities(tokenResult.accessToken, 30, {
+    // Fetch recent activities (last 20 to reduce API calls)
+    const activities = await stravaClient.fetchActivities(tokenResult.accessToken, 20, {
       cacheKey: `activities:${session.user.id}:photos`,
       ttlMs: 10 * 60 * 1000, // 10 minutes
     }) as StravaActivity[];
 
-    // Filter activities that have photos
-    const activitiesWithPhotoCount = activities.filter(a => a.photo_count && a.photo_count > 0);
+    logger.info('Fetched activities for photos', {
+      activityCount: activities.length,
+      activitiesWithPhotoCount: activities.filter(a => a.photo_count && a.photo_count > 0).length
+    });
 
     const activitiesWithPhotos: ActivityWithPhotos[] = [];
 
-    // Fetch photos for each activity that has them
-    for (const activity of activitiesWithPhotoCount) {
+    // Fetch photos for all recent activities (not just those with photo_count)
+    // because photo_count might not be reliable in the list response
+    for (const activity of activities.slice(0, 15)) { // Check first 15 activities
       try {
         const photoResponse = await fetch(
           `https://www.strava.com/api/v3/activities/${activity.id}/photos?size=600&photo_sources=true`,
@@ -103,12 +106,21 @@ export async function GET() {
         if (photoResponse.ok) {
           const photos: StravaPhoto[] = await photoResponse.json();
           if (photos.length > 0) {
+            logger.info('Found photos for activity', {
+              activityId: activity.id,
+              photoCount: photos.length
+            });
             activitiesWithPhotos.push({
               id: activity.id,
               name: activity.name,
               photos,
             });
           }
+        } else {
+          logger.warn('Photo fetch failed', {
+            activityId: activity.id,
+            status: photoResponse.status
+          });
         }
       } catch (error) {
         logger.warn('Failed to fetch photos for activity', {
