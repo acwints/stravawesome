@@ -2,22 +2,13 @@
 
 import useSWR from 'swr';
 import { METERS_TO_MILES, METERS_TO_FEET } from '@/constants';
-
-interface WeeklySummaryData {
-  totalActivities: number;
-  totalDistance: number;
-  totalTime: number;
-  totalElevation: number;
-  lastWeekDistance: number;
-  lastWeekActivities: number;
-}
-
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+import { fetchInsights } from '@/services/api';
+import type { StravaInsightsPayload } from '@/types';
 
 export default function WeeklySummary() {
-  const { data, error } = useSWR<{ weeklySummary: WeeklySummaryData }>(
+  const { data, error } = useSWR<StravaInsightsPayload>(
     '/api/strava/insights',
-    fetcher,
+    fetchInsights,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false
@@ -33,7 +24,7 @@ export default function WeeklySummary() {
     );
   }
 
-  if (!data || !data.weeklySummary) {
+  if (!data) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Weekly Summary</h3>

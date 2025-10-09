@@ -3,11 +3,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { StravaActivity } from '@/types';
+import { fetchActivities as fetchActivitiesApi, ApiError } from '@/services/api';
 
 interface DashboardData {
   activities: StravaActivity[] | null;
   isLoading: boolean;
   error: string | null;
+  reauthRequired: boolean;
 }
 
 interface DashboardContextType extends DashboardData {
@@ -21,40 +23,57 @@ interface DashboardDataProviderProps {
 }
 
 export function DashboardDataProvider({ children }: DashboardDataProviderProps) {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
+  const userId = session?.user?.id ?? null;
+  const sessionUser = session?.user;
   const [activities, setActivities] = useState<StravaActivity[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reauthRequired, setReauthRequired] = useState(false);
   const hasFetched = useRef(false);
 
   const fetchActivities = useCallback(async () => {
-    if (!session?.user?.id) return;
+    if (!userId) return;
 
     setIsLoading(true);
     setError(null);
+    setReauthRequired(false);
 
     try {
-      const response = await fetch('/api/strava/activities');
-      if (!response.ok) {
-        throw new Error('Failed to fetch activities');
-      }
-      
-      const data = await response.json();
-      setActivities(data.data || []);
+      const data = await fetchActivitiesApi();
+      setActivities(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
       console.error('Error fetching activities:', err);
+      if (err instanceof ApiError) {
+        setError(err.message);
+        if (err.code === 'STRAVA_REAUTH_REQUIRED') {
+          setReauthRequired(true);
+          setActivities(null);
+          if (sessionUser) {
+            if (typeof update === 'function') {
+              await update({
+                user: {
+                  ...sessionUser,
+                  stravaConnected: false,
+                },
+              });
+            }
+          }
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [session?.user?.id]);
+  }, [userId, sessionUser, update]);
 
   const refetch = () => {
     fetchActivities();
   };
 
   useEffect(() => {
-    if (session?.user?.id && !hasFetched.current) {
+    if (userId && !hasFetched.current) {
       hasFetched.current = true;
       // Add a small delay to prevent immediate concurrent calls
       const timer = setTimeout(() => {
@@ -63,12 +82,13 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
       
       return () => clearTimeout(timer);
     }
-  }, [session?.user?.id, fetchActivities]);
+  }, [userId, fetchActivities]);
 
   const value: DashboardContextType = {
     activities,
     isLoading,
     error,
+    reauthRequired,
     refetch,
   };
 

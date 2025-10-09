@@ -1,13 +1,14 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/config';
 import prisma from '@/lib/prisma';
-import { StravaClient } from '@/lib/strava-client';
+import { StravaClient, StravaAuthError } from '@/lib/strava-client';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
 import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
 import { sharedDataService } from '@/lib/shared-data-service';
 import { StravaActivity } from '@/types';
 import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 export async function GET() {
   return withErrorHandling(async () => {
@@ -75,14 +76,32 @@ export async function GET() {
     // Strava allows 100 requests per 15 minutes, 1000 per day
     // Using aggressive caching to minimize repeated requests
     const cacheKey = `activities:${session.user.id}:detailed`;
-    const detailedActivities = await stravaClient.fetchActivitiesWithDetails(
-      tokenResult.accessToken, 
-      100,
-      { 
-        cacheKey,
-        ttlMs: 15 * 60 * 1000 // 15 minutes cache
+    let detailedActivities: StravaActivity[];
+
+    try {
+      detailedActivities = await stravaClient.fetchActivitiesWithDetails(
+        tokenResult.accessToken,
+        100,
+        {
+          cacheKey,
+          ttlMs: 15 * 60 * 1000, // 15 minutes cache
+        }
+      ) as StravaActivity[];
+    } catch (error) {
+      if (error instanceof StravaAuthError) {
+        logger.warn('Strava access revoked by user', { userId: session.user.id });
+        await stravaClient.disconnectUserAccount(session.user.id);
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Strava connection expired. Please reconnect your Strava account.',
+            code: 'STRAVA_REAUTH_REQUIRED',
+          },
+          { status: 401 }
+        );
       }
-    );
+      throw error;
+    }
 
     // If no activities found, this might be a new user or rate limiting
     if (!detailedActivities || detailedActivities.length === 0) {

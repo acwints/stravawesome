@@ -1,7 +1,7 @@
-import { StravaActivity, Goal, AIChatResponse } from '@/types';
+import { StravaActivity, Goal, AIChatResponse, StravaInsightsPayload } from '@/types';
 import { ApiResponse, ApiSuccessResponse } from '@/lib/api-response';
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
@@ -66,4 +66,14 @@ export async function sendAIMessage(message: string): Promise<AIChatResponse> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message }),
   });
-} 
+}
+
+export async function fetchInsights(): Promise<StravaInsightsPayload> {
+  return fetchJson<StravaInsightsPayload>('/api/strava/insights');
+}
+
+export async function disconnectStrava(): Promise<void> {
+  await fetchJson('/api/strava/disconnect', {
+    method: 'POST',
+  });
+}

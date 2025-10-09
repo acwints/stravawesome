@@ -1,53 +1,17 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/config';
 import prisma from '@/lib/prisma';
-import { StravaClient } from '@/lib/strava-client';
+import { StravaClient, StravaAuthError } from '@/lib/strava-client';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
 import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
 import { sharedDataService } from '@/lib/shared-data-service';
-import type { StravaActivity } from '@/types';
+import type { StravaActivity, StravaInsightsPayload } from '@/types';
 import { headers } from 'next/headers';
 import { startOfWeek, endOfWeek, subWeeks, startOfMonth, subDays } from 'date-fns';
+import { NextResponse } from 'next/server';
 
-interface WeeklySummary {
-  totalActivities: number;
-  totalDistance: number;
-  totalTime: number;
-  totalElevation: number;
-  lastWeekDistance: number;
-  lastWeekActivities: number;
-}
-
-interface InsightsPayload {
-  weeklySummary: WeeklySummary;
-  insights: {
-    consistency: {
-      daysActive: number;
-      totalDays: number;
-      percentage: number;
-      trend: 'good' | 'fair' | 'low';
-    };
-    performance: {
-      averagePace: number;
-      totalRuns: number;
-      longestActivity: {
-        name: string;
-        distance: number;
-        type: string;
-        date: string;
-      } | null;
-      weekOverWeekImprovement: number;
-    };
-    goals: {
-      thisMonthDistance: number;
-      thisMonthActivities: number;
-      averageActivityDistance: number;
-    };
-  };
-}
-
-const insightsCache = new Map<string, { data: InsightsPayload; expiresAt: number }>();
+const insightsCache = new Map<string, { data: StravaInsightsPayload; expiresAt: number }>();
 
 export async function GET() {
   return withErrorHandling(async () => {
@@ -111,11 +75,27 @@ export async function GET() {
         userId: session.user.id 
       });
     } else {
-      activities = await stravaClient.fetchActivities(tokenResult.accessToken, 200, {
-        cacheKey: `activities:${session.user.id}:${afterEpoch}`,
-        ttlMs: 15 * 60 * 1000, // Increased to 15 minutes
-        after: afterEpoch,
-      }) as StravaActivity[];
+      try {
+        activities = await stravaClient.fetchActivities(tokenResult.accessToken, 200, {
+          cacheKey: `activities:${session.user.id}:${afterEpoch}`,
+          ttlMs: 15 * 60 * 1000, // Increased to 15 minutes
+          after: afterEpoch,
+        }) as StravaActivity[];
+      } catch (error) {
+        if (error instanceof StravaAuthError) {
+          logger.warn('Strava access revoked while fetching insights', { userId: session.user.id });
+          await stravaClient.disconnectUserAccount(session.user.id);
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Strava connection expired. Please reconnect your Strava account.',
+              code: 'STRAVA_REAUTH_REQUIRED',
+            },
+            { status: 401 }
+          );
+        }
+        throw error;
+      }
     }
 
     // Calculate insights
@@ -182,7 +162,7 @@ export async function GET() {
       ? ((weeklySummary.totalDistance - weeklySummary.lastWeekDistance) / weeklySummary.lastWeekDistance) * 100
       : 0;
 
-    const insights = {
+    const insights: StravaInsightsPayload['insights'] = {
       consistency: {
         daysActive: daysWithActivities,
         totalDays: 30,
@@ -209,7 +189,7 @@ export async function GET() {
       }
     };
 
-    const payload: InsightsPayload = {
+    const payload: StravaInsightsPayload = {
       weeklySummary,
       insights,
     };

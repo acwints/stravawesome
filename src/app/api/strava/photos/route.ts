@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/config';
 import prisma from '@/lib/prisma';
-import { StravaClient } from '@/lib/strava-client';
+import { StravaClient, StravaAuthError } from '@/lib/strava-client';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
 import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
@@ -100,6 +100,18 @@ export async function GET() {
           activitiesWithPhotoCount: activities.filter(a => a.photo_count && a.photo_count > 0).length
         });
       } catch (error) {
+        if (error instanceof StravaAuthError) {
+          logger.warn('Strava access revoked while fetching photos', { userId: session.user.id });
+          await stravaClient.disconnectUserAccount(session.user.id);
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Strava connection expired. Please reconnect your Strava account.',
+              code: 'STRAVA_REAUTH_REQUIRED',
+            },
+            { status: 401 }
+          );
+        }
         logger.warn('Failed to fetch activities for photos, returning empty result', {
           error: error instanceof Error ? error.message : String(error),
           userId: session.user.id
@@ -163,6 +175,14 @@ export async function GET() {
                 rateLimited = true;
                 return null;
               }
+            } else if (photoResponse.status === 401 || photoResponse.status === 403) {
+              const errorText = await photoResponse.text();
+              logger.warn('Photo fetch unauthorized', {
+                activityId: activity.id,
+                status: photoResponse.status,
+                error: errorText,
+              });
+              throw new StravaAuthError('STRAVA_UNAUTHORIZED', photoResponse.status);
             } else {
               const errorText = await photoResponse.text();
               logger.warn('Photo fetch failed', {
@@ -209,7 +229,27 @@ export async function GET() {
         }
 
         checkedCount++;
-        const photos = await fetchPhotosWithRetry(activity);
+        let photos: StravaPhoto[] | null = null;
+        try {
+          photos = await fetchPhotosWithRetry(activity);
+        } catch (error) {
+          if (error instanceof StravaAuthError) {
+            logger.warn('Strava access revoked while fetching photos for activity', {
+              userId: session.user.id,
+              activityId: activity.id,
+            });
+            await stravaClient.disconnectUserAccount(session.user.id);
+            return NextResponse.json(
+              {
+                success: false,
+                error: 'Strava connection expired. Please reconnect your Strava account.',
+                code: 'STRAVA_REAUTH_REQUIRED',
+              },
+              { status: 401 }
+            );
+          }
+          throw error;
+        }
         
         if (photos && photos.length > 0) {
           foundCount++;
@@ -262,3 +302,4 @@ export async function GET() {
     return successResponse(activitiesWithPhotos);
   });
 }
+import { NextResponse } from 'next/server';

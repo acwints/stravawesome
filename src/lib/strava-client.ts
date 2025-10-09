@@ -7,6 +7,16 @@ import { logger } from './logger';
 import { stravaRequestQueue } from './strava-request-queue';
 import { sharedDataService } from './shared-data-service';
 
+export class StravaAuthError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'StravaAuthError';
+    this.status = status;
+  }
+}
+
 interface FetchActivitiesOptions {
   cacheKey?: string;
   ttlMs?: number;
@@ -35,6 +45,17 @@ export class StravaClient {
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
+  }
+
+  async disconnectUserAccount(userId: string): Promise<void> {
+    logger.info('Disconnecting Strava account for user', { userId });
+    await this.prisma.account.deleteMany({
+      where: {
+        userId,
+        provider: 'strava',
+      },
+    });
+    sharedDataService.clearUser(userId);
   }
 
   /**
@@ -226,6 +247,16 @@ export class StravaClient {
           return [];
           }
           
+          if (response.status === 401 || response.status === 403) {
+            const errorBody = await response.text();
+            logger.warn('Strava activities fetch unauthorized', {
+              status: response.status,
+              cacheKey,
+              error: errorBody,
+            });
+            throw new StravaAuthError('STRAVA_UNAUTHORIZED', response.status);
+          }
+
           const errorText = await response.text();
           logger.error('Strava activities fetch failed', undefined, {
             status: response.status,
@@ -251,6 +282,9 @@ export class StravaClient {
 
         return activities;
       } catch (error) {
+        if (error instanceof StravaAuthError) {
+          throw error;
+        }
         if ((error as Error)?.name === 'AbortError') {
           logger.error('Strava activities fetch timed out', undefined, { timeoutMs, cacheKey });
           if (staleValue) {
@@ -327,6 +361,14 @@ export class StravaClient {
               logger.warn('Max retries exceeded for activity details due to rate limiting', { activityId });
               return null;
             }
+          } else if (response.status === 401 || response.status === 403) {
+            const errorText = await response.text();
+            logger.warn('Strava activity details unauthorized', {
+              activityId,
+              status: response.status,
+              error: errorText,
+            });
+            throw new StravaAuthError('STRAVA_UNAUTHORIZED', response.status);
           } else {
             const errorText = await response.text();
             logger.error('Strava activity details fetch failed', undefined, {
@@ -338,6 +380,9 @@ export class StravaClient {
             throw new Error(`Strava API error: ${response.status}`);
           }
         } catch (error) {
+          if (error instanceof StravaAuthError) {
+            throw error;
+          }
           if (attempt === retries) {
             logger.error('Error fetching activity details from Strava', error, { activityId });
             throw error;
@@ -379,11 +424,22 @@ export class StravaClient {
             end_longitude: details.end_longitude,
           };
         } catch (error) {
+          if (error instanceof StravaAuthError) {
+            throw error;
+          }
           logger.warn(`Failed to fetch details for activity ${activity.id}, using basic data`, { error });
           return activity;
         }
       })
     );
+
+    const authError = detailedActivities.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected' && result.reason instanceof StravaAuthError
+    );
+
+    if (authError) {
+      throw authError.reason;
+    }
 
     return detailedActivities
       .filter((result) => result.status === 'fulfilled')

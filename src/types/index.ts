@@ -71,4 +71,47 @@ export interface AIChatResponse {
     totalTime: number;
     activityTypes: string[];
   };
-} 
+}
+
+export interface StravaWeeklySummary {
+  totalActivities: number;
+  totalDistance: number;
+  totalTime: number;
+  totalElevation: number;
+  lastWeekDistance: number;
+  lastWeekActivities: number;
+}
+
+export interface StravaConsistencyInsight {
+  daysActive: number;
+  totalDays: number;
+  percentage: number;
+  trend: 'good' | 'fair' | 'low';
+}
+
+export interface StravaPerformanceInsight {
+  averagePace: number;
+  totalRuns: number;
+  longestActivity: {
+    name: string;
+    distance: number;
+    type: string;
+    date: string;
+  } | null;
+  weekOverWeekImprovement: number;
+}
+
+export interface StravaGoalsInsight {
+  thisMonthDistance: number;
+  thisMonthActivities: number;
+  averageActivityDistance: number;
+}
+
+export interface StravaInsightsPayload {
+  weeklySummary: StravaWeeklySummary;
+  insights: {
+    consistency: StravaConsistencyInsight;
+    performance: StravaPerformanceInsight;
+    goals: StravaGoalsInsight;
+  };
+}

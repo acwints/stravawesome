@@ -2,45 +2,20 @@
 
 import useSWR from 'swr';
 import { METERS_TO_MILES } from '@/constants';
-
-interface InsightsData {
-  consistency: {
-    daysActive: number;
-    totalDays: number;
-    percentage: number;
-    trend: 'good' | 'fair' | 'low';
-  };
-  performance: {
-    averagePace: number;
-    totalRuns: number;
-    longestActivity: {
-      name: string;
-      distance: number;
-      type: string;
-      date: string;
-    } | null;
-    weekOverWeekImprovement: number;
-  };
-  goals: {
-    thisMonthDistance: number;
-    thisMonthActivities: number;
-    averageActivityDistance: number;
-  };
-}
-
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+import { fetchInsights } from '@/services/api';
+import type { StravaInsightsPayload } from '@/types';
 
 export default function TrainingInsights() {
-  const { data, error } = useSWR<{ insights: InsightsData }>(
+  const { data, error } = useSWR<StravaInsightsPayload>(
     '/api/strava/insights',
-    fetcher,
+    fetchInsights,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false
     }
   );
 
-  if (error || !data || !data.insights) {
+  if (error || !data) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Training Insights</h3>
