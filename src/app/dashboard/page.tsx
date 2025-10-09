@@ -11,7 +11,6 @@ import AIChat from '@/components/AIChat';
 import TrainingMapWrapper from '@/components/TrainingMapWrapper';
 import PhotoGallery from '@/components/PhotoGallery';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
-import { useSubscription } from '@/hooks/useSubscription';
 import { Session } from "next-auth";
 
 function LoadingSpinner() {
@@ -23,7 +22,7 @@ function LoadingSpinner() {
 }
 
 function DashboardContent({ session }: { session: Session }) {
-  const { isPremium, isLoading: subscriptionLoading } = useSubscription();
+  // Premium features are now available to all users
 
   if (!session.user.stravaConnected) {
     return (
@@ -58,103 +57,35 @@ function DashboardContent({ session }: { session: Session }) {
         <ActivityHeatmap />
       </Suspense>
 
-      {/* Everything else - Single Premium Gate */}
-      {isPremium || subscriptionLoading ? (
-        <>
-          <AIChat />
+      {/* All features now available to everyone */}
+      <AIChat />
 
-          <Suspense fallback={<GoalsSkeleton />}>
-            <GoalsProgress />
-          </Suspense>
+      <Suspense fallback={<GoalsSkeleton />}>
+        <GoalsProgress />
+      </Suspense>
 
-          <Suspense fallback={<WeeklyChartSkeleton />}>
-            <WeeklyChart />
-          </Suspense>
+      <Suspense fallback={<WeeklyChartSkeleton />}>
+        <WeeklyChart />
+      </Suspense>
 
-          <Suspense fallback={<RecentActivitiesSkeleton />}>
-            <RecentActivities />
-          </Suspense>
+      <Suspense fallback={<RecentActivitiesSkeleton />}>
+        <RecentActivities />
+      </Suspense>
 
-          <Suspense fallback={
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
-              <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-                ))}
-              </div>
-            </div>
-          }>
-            <PhotoGallery />
-          </Suspense>
-
-          <TrainingMapWrapper />
-        </>
-      ) : (
-        <>
-          {/* Blurred Preview */}
-          <div className="relative">
-            <div className="blur-sm pointer-events-none select-none opacity-60">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 mb-4">
-                <div className="h-12 w-full bg-gray-200 dark:bg-gray-700 rounded mb-4" />
-                <div className="h-8 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 mb-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded" />
-                  <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded" />
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 mb-4">
-                <div className="h-48 w-full bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 mb-4">
-                <div className="space-y-3">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700 rounded" />
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 mb-4">
-                <div className="grid grid-cols-4 gap-4">
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="aspect-square bg-gray-200 dark:bg-gray-700 rounded" />
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
-                <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-            </div>
-
-            {/* Overlay with CTA */}
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-sm">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-8 max-w-md text-center">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Unlock All Features
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-1">
-                  <span className="font-bold text-primary-600 dark:text-primary-400">$12/year</span> after 7-day free trial
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
-                  Cancel anytime before trial ends — no charge
-                </p>
-                <a
-                  href="/pricing"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors"
-                >
-                  Start Free Trial
-                </a>
-              </div>
-            </div>
+      <Suspense fallback={
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+            ))}
           </div>
-        </>
-      )}
+        </div>
+      }>
+        <PhotoGallery />
+      </Suspense>
+
+      <TrainingMapWrapper />
     </div>
   );
 }

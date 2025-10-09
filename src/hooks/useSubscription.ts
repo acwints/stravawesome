@@ -13,7 +13,7 @@ const fetcher = async (url: string): Promise<SubscriptionStatus> => {
 };
 
 export function useSubscription() {
-  const { data, error, isLoading, mutate } = useSWR<SubscriptionStatus>(
+  const { data, error, mutate } = useSWR<SubscriptionStatus>(
     '/api/subscription/status',
     fetcher,
     {
@@ -24,9 +24,9 @@ export function useSubscription() {
   );
 
   return {
-    isPremium: data?.isPremium ?? false,
+    isPremium: true, // All features now available to all users
     subscription: data?.subscription ?? null,
-    isLoading,
+    isLoading: false, // No loading state needed
     error,
     refresh: mutate,
   };
