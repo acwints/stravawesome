@@ -30,7 +30,7 @@ function getWeeksInYear(year: number): Date[][] {
   const startDate = new Date(firstDay);
   startDate.setDate(firstDay.getDate() - firstDay.getDay());
 
-  let currentDate = new Date(startDate);
+  const currentDate = new Date(startDate);
 
   while (currentDate <= lastDay || weeks.length < 53) {
     const week: Date[] = [];
@@ -49,7 +49,6 @@ function getWeeksInYear(year: number): Date[][] {
 
 export default function ActivityHeatmap() {
   const currentYear = new Date().getFullYear();
-  const [selectedDay, setSelectedDay] = useState<DayActivity | null>(null);
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
 
   const { data: activities, error, isLoading } = useSWR<StravaActivity[]>(
@@ -209,7 +208,6 @@ export default function ActivityHeatmap() {
                       }}
                       onMouseEnter={() => setHoveredDay(dateStr)}
                       onMouseLeave={() => setHoveredDay(null)}
-                      onClick={() => setSelectedDay(dayData)}
                       title={dayData ? `${day.toLocaleDateString()}: ${dayData.count} ${dayData.count === 1 ? 'activity' : 'activities'}, ${Math.round(dayData.totalCalories)} cal` : day.toLocaleDateString()}
                     />
                   );
