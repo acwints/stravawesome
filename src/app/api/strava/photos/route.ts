@@ -8,6 +8,9 @@ import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
 import { stravaRequestQueue } from '@/lib/strava-request-queue';
 import { sharedDataService } from '@/lib/shared-data-service';
 import { headers } from 'next/headers';
+import type { StravaActivity } from '@/types';
+
+type StravaActivityWithPhotos = StravaActivity & { photo_count?: number };
 
 interface StravaPhoto {
   id: number;
@@ -20,12 +23,6 @@ interface StravaPhoto {
   source: number;
   caption?: string;
   created_at: string;
-}
-
-interface StravaActivity {
-  id: number;
-  name: string;
-  photo_count?: number;
 }
 
 interface ActivityWithPhotos {
@@ -80,8 +77,10 @@ export async function GET() {
     }
 
     // Check shared cache first to avoid duplicate API calls
-    const sharedActivities = sharedDataService.getActivities(session.user.id);
-    let activities: StravaActivity[] = [];
+    const sharedActivities = sharedDataService.getActivities(session.user.id) as
+      | StravaActivityWithPhotos[]
+      | undefined;
+    let activities: StravaActivityWithPhotos[] = [];
     
     if (sharedActivities) {
       activities = sharedActivities.slice(0, 30); // Use shared data
@@ -91,10 +90,10 @@ export async function GET() {
       });
     } else {
       try {
-        activities = await stravaClient.fetchActivities(tokenResult.accessToken, 30, {
+        activities = (await stravaClient.fetchActivities(tokenResult.accessToken, 30, {
           cacheKey: `activities:${session.user.id}:photos`,
           ttlMs: 15 * 60 * 1000, // 15 minutes cache
-        }) as StravaActivity[];
+        })) as StravaActivityWithPhotos[];
 
         logger.info('Fetched activities for photos', {
           activityCount: activities.length,
@@ -168,7 +167,7 @@ export async function GET() {
               const errorText = await photoResponse.text();
               logger.warn('Photo fetch failed', {
                 activityId: activity.id,
-                activityName: activity.name,
+                activityName: activity.name ?? 'Unknown activity',
                 status: photoResponse.status,
                 error: errorText,
                 attempt,
@@ -216,18 +215,18 @@ export async function GET() {
           foundCount++;
           logger.info('Found photos for activity', {
             activityId: activity.id,
-            activityName: activity.name,
+            activityName: activity.name ?? 'Unknown activity',
             photoCount: photos.length,
           });
           activitiesWithPhotos.push({
             id: activity.id,
-            name: activity.name,
+            name: activity.name ?? 'Unnamed activity',
             photos,
           });
         } else if (photos !== null) {
           logger.info('No photos for activity', {
             activityId: activity.id,
-            activityName: activity.name,
+            activityName: activity.name ?? 'Unknown activity',
           });
         }
       }

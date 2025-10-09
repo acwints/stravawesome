@@ -6,24 +6,9 @@ import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
 import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
 import { sharedDataService } from '@/lib/shared-data-service';
+import type { StravaActivity } from '@/types';
 import { headers } from 'next/headers';
 import { startOfWeek, endOfWeek, subWeeks, startOfMonth, subDays } from 'date-fns';
-
-interface StravaActivity {
-  id: number;
-  name: string;
-  distance: number;
-  moving_time: number;
-  elapsed_time: number;
-  total_elevation_gain: number;
-  type: string;
-  start_date: string;
-  average_speed: number;
-  max_speed: number;
-  average_heartrate?: number;
-  max_heartrate?: number;
-  suffer_score?: number;
-}
 
 interface WeeklySummary {
   totalActivities: number;
@@ -208,7 +193,7 @@ export async function GET() {
         averagePace: avgPace,
         totalRuns: runs.length,
         longestActivity: longestActivity ? {
-          name: longestActivity.name,
+          name: longestActivity.name ?? 'Unnamed activity',
           distance: longestActivity.distance,
           type: longestActivity.type,
           date: longestActivity.start_date
