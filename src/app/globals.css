@@ -19,3 +19,13 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Enhanced map route styling with glow effect */
+.leaflet-interactive.route-line {
+  filter: drop-shadow(0 0 3px currentColor);
+  transition: all 0.2s ease;
+}
+
+.leaflet-interactive.route-line:hover {
+  filter: drop-shadow(0 0 8px currentColor);
+}

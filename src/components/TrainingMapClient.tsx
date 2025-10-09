@@ -47,15 +47,15 @@ function decodePolyline(encoded: string): [number, number][] {
   return points;
 }
 
-// Get color based on activity type
+// Get vibrant color based on activity type - enhanced for dark map
 function getActivityColor(type: string): string {
   const colors: Record<string, string> = {
-    Run: COLORS.PRIMARY,
-    Ride: COLORS.SECONDARY,
-    Walk: COLORS.WARNING,
-    Hike: COLORS.SUCCESS,
+    Run: '#ff3366',      // Hot pink/red - pops on dark background
+    Ride: '#00d4ff',     // Bright cyan - electric blue
+    Walk: '#ffcc00',     // Bright yellow/gold
+    Hike: '#00ff88',     // Bright green/mint
   };
-  return colors[type] || COLORS.PRIMARY;
+  return colors[type] || '#ff3366';
 }
 
 interface TrainingMapClientProps {
@@ -116,21 +116,47 @@ export default function TrainingMapClient({ activities }: TrainingMapClientProps
   return (
     <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Training Routes</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          {activitiesWithRoutes.length} routes shown
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Training Routes</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              {activitiesWithRoutes.length} routes shown
+            </p>
+          </div>
+          {/* Legend */}
+          <div className="flex gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-1 rounded-full" style={{ backgroundColor: '#ff3366', boxShadow: '0 0 8px #ff3366' }} />
+              <span className="text-gray-600 dark:text-gray-400">Run</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-1 rounded-full" style={{ backgroundColor: '#00d4ff', boxShadow: '0 0 8px #00d4ff' }} />
+              <span className="text-gray-600 dark:text-gray-400">Ride</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-1 rounded-full" style={{ backgroundColor: '#ffcc00', boxShadow: '0 0 8px #ffcc00' }} />
+              <span className="text-gray-600 dark:text-gray-400">Walk</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-1 rounded-full" style={{ backgroundColor: '#00ff88', boxShadow: '0 0 8px #00ff88' }} />
+              <span className="text-gray-600 dark:text-gray-400">Hike</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="h-96 w-full">
+      <div className="h-[600px] w-full">
         <MapContainer
           bounds={mapBounds}
           boundsOptions={{ padding: [30, 30] }}
           className="h-full w-full"
           zoom={10}
         >
+          {/* Dark mode map tiles - better contrast for routes */}
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            subdomains="abcd"
+            maxZoom={20}
           />
 
           {/* Draw route polylines */}
@@ -146,14 +172,12 @@ export default function TrainingMapClient({ activities }: TrainingMapClientProps
                 positions={routePoints}
                 pathOptions={{
                   color: color,
-                  weight: 3,
-                  opacity: 0.7,
+                  weight: 4,
+                  opacity: 0.9,
+                  lineCap: 'round',
+                  lineJoin: 'round',
                 }}
-                eventHandlers={{
-                  click: () => {
-                    // Optional: could open activity details
-                  }
-                }}
+                className="route-line hover:opacity-100 transition-opacity cursor-pointer"
               >
                 <Popup>
                   <div className="p-2">
