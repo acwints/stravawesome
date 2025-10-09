@@ -69,6 +69,8 @@ export default function WeeklyChart() {
         fullDate: activity.start_date,
         running: activity.type === 'Run' ? distanceInMiles : 0,
         cycling: activity.type === 'Ride' ? distanceInMiles : 0,
+        walking: activity.type === 'Walk' ? distanceInMiles : 0,
+        hiking: activity.type === 'Hike' ? distanceInMiles : 0,
       };
     })
     .sort((a, b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime());
@@ -99,6 +101,18 @@ export default function WeeklyChart() {
               dataKey="cycling"
               name="Cycling"
               fill={COLORS.SECONDARY}
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="walking"
+              name="Walking"
+              fill={COLORS.WARNING}
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="hiking"
+              name="Hiking"
+              fill={COLORS.SUCCESS}
               radius={[4, 4, 0, 0]}
             />
           </BarChart>

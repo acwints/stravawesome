@@ -30,6 +30,8 @@ export interface ActivityData {
   fullDate: string;
   running: number;
   cycling: number;
+  walking: number;
+  hiking: number;
 }
 
 export interface Goal {
