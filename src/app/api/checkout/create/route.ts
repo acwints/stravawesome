@@ -16,6 +16,12 @@ export async function POST() {
       return ErrorResponses.unauthorized();
     }
 
+    // Check if Polar is configured
+    if (!POLAR_CONFIG.priceId) {
+      logger.error('Polar.sh not configured');
+      return ErrorResponses.internalError('Payment system not configured. Please contact support.');
+    }
+
     try {
       // Create Polar checkout URL with query parameters
       const checkoutUrl = new URL('https://polar.sh/checkout');
