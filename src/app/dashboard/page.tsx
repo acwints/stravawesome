@@ -132,6 +132,8 @@ function DashboardContent() {
 
   return (
     <div className="space-y-4 animate-fade-in">
+      <AIChat />
+
       {/* Activity Heatmap - FREE */}
       <Suspense
         fallback={
@@ -143,9 +145,6 @@ function DashboardContent() {
       >
         <ActivityHeatmap />
       </Suspense>
-
-      {/* All features now available to everyone */}
-      <AIChat />
 
       <Suspense fallback={<GoalsSkeleton />}>
         <GoalsProgress />
