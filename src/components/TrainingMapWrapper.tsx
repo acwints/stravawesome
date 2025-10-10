@@ -1,15 +1,14 @@
 'use client';
 
-import useSWR from 'swr';
-import { StravaActivity } from '@/types';
-import { fetchActivities } from '@/services/api';
+import { useDashboardData } from './DashboardDataProvider';
 import TrainingMap from './TrainingMap';
 
 export default function TrainingMapWrapper() {
-  const { data: activities, error } = useSWR<StravaActivity[]>('/api/strava/activities', fetchActivities, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false
-  });
+  const { activities, error, isLoading, stravaConnected } = useDashboardData();
+
+  if (!stravaConnected) {
+    return null;
+  }
 
   if (error) {
     return (
@@ -20,7 +19,7 @@ export default function TrainingMapWrapper() {
     );
   }
 
-  if (!activities) {
+  if (isLoading || !activities) {
     return (
       <div className="bg-gray-50 rounded-lg p-8 text-center">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Training Locations</h3>
