@@ -3,15 +3,14 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
-import { useSession } from 'next-auth/react';
 import { Goal, StravaActivity } from '@/types';
 import { ACTIVITY_TYPES, METERS_TO_MILES, CURRENT_YEAR } from '@/constants';
 import { fetchGoals, updateGoals, fetchActivities } from '@/services/api';
 import { GoalsSkeleton } from './ui/Skeleton';
+import { useDashboardData } from './DashboardDataProvider';
 
 export default function GoalsProgress() {
-  const { data: session } = useSession();
-  const isStravaConnected = session?.user?.stravaConnected ?? false;
+  const { stravaConnected } = useDashboardData();
   const [isEditing, setIsEditing] = useState(false);
   const [editableGoals, setEditableGoals] = useState<Goal[]>([]);
   
@@ -21,7 +20,7 @@ export default function GoalsProgress() {
   });
 
   const { data: activities, error: activitiesError } = useSWR<StravaActivity[]>(
-    isStravaConnected ? '/api/strava/activities' : null,
+    stravaConnected ? '/api/strava/activities' : null,
     fetchActivities,
     {
       revalidateOnFocus: false,
@@ -34,7 +33,7 @@ export default function GoalsProgress() {
     return null;
   }
 
-  if (goalsLoading || !goals || (isStravaConnected && !activities)) {
+  if (goalsLoading || !goals || (stravaConnected && !activities)) {
     return <GoalsSkeleton />;
   }
 

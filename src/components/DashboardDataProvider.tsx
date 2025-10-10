@@ -10,6 +10,7 @@ interface DashboardData {
   isLoading: boolean;
   error: string | null;
   reauthRequired: boolean;
+  stravaConnected: boolean;
 }
 
 interface DashboardContextType extends DashboardData {
@@ -26,12 +27,16 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
   const { data: session, update } = useSession();
   const userId = session?.user?.id ?? null;
   const sessionUser = session?.user;
-  const isStravaConnected = sessionUser?.stravaConnected ?? false;
+  const [isStravaConnected, setIsStravaConnected] = useState<boolean>(sessionUser?.stravaConnected ?? false);
   const [activities, setActivities] = useState<StravaActivity[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reauthRequired, setReauthRequired] = useState(false);
   const hasFetched = useRef(false);
+
+  useEffect(() => {
+    setIsStravaConnected(sessionUser?.stravaConnected ?? false);
+  }, [sessionUser?.stravaConnected]);
 
   const fetchActivities = useCallback(async () => {
     if (!userId || !isStravaConnected) {
@@ -54,20 +59,20 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
         if (err.code === 'STRAVA_REAUTH_REQUIRED') {
           setReauthRequired(true);
           setActivities(null);
-          if (sessionUser) {
-            if (typeof update === 'function') {
-              await update({
-                user: {
-                  ...sessionUser,
-                  stravaConnected: false,
-                },
-              });
-            }
+          setIsStravaConnected(false);
+          if (sessionUser && typeof update === 'function') {
+            await update({
+              user: {
+                ...sessionUser,
+                stravaConnected: false,
+              },
+            });
           }
         } else if (err.code === 'BAD_REQUEST' || err.status === 400) {
           setActivities(null);
-          if (sessionUser && sessionUser.stravaConnected) {
-            if (typeof update === 'function') {
+          if (isStravaConnected) {
+            setIsStravaConnected(false);
+            if (sessionUser && typeof update === 'function') {
               await update({
                 user: {
                   ...sessionUser,
@@ -111,6 +116,7 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
     isLoading,
     error,
     reauthRequired,
+    stravaConnected: isStravaConnected,
     refetch,
   };
 

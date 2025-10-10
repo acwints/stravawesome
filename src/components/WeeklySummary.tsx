@@ -1,17 +1,16 @@
 'use client';
 
 import useSWR from 'swr';
-import { useSession } from 'next-auth/react';
 import { METERS_TO_MILES, METERS_TO_FEET } from '@/constants';
 import { fetchInsights } from '@/services/api';
 import type { StravaInsightsPayload } from '@/types';
+import { useDashboardData } from './DashboardDataProvider';
 
 export default function WeeklySummary() {
-  const { data: session } = useSession();
-  const isStravaConnected = session?.user?.stravaConnected ?? false;
+  const { stravaConnected } = useDashboardData();
 
   const { data, error } = useSWR<StravaInsightsPayload>(
-    isStravaConnected ? '/api/strava/insights' : null,
+    stravaConnected ? '/api/strava/insights' : null,
     fetchInsights,
     {
       revalidateOnFocus: false,
@@ -19,7 +18,7 @@ export default function WeeklySummary() {
     }
   );
 
-  if (!isStravaConnected) {
+  if (!stravaConnected) {
     return null;
   }
 

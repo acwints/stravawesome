@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import Image from 'next/image';
-import { useSession } from 'next-auth/react';
+import { useDashboardData } from './DashboardDataProvider';
 
 interface StravaPhoto {
   id: number;
@@ -35,11 +35,10 @@ async function fetchPhotos(): Promise<ActivityWithPhotos[]> {
 }
 
 export default function PhotoGallery() {
-  const { data: session } = useSession();
-  const isStravaConnected = session?.user?.stravaConnected ?? false;
+  const { stravaConnected } = useDashboardData();
 
   const { data: activities, error, isLoading } = useSWR<ActivityWithPhotos[]>(
-    isStravaConnected ? '/api/strava/photos' : null,
+    stravaConnected ? '/api/strava/photos' : null,
     fetchPhotos,
     {
       revalidateOnFocus: false,
@@ -49,7 +48,7 @@ export default function PhotoGallery() {
 
   const [selectedPhoto, setSelectedPhoto] = useState<StravaPhoto | null>(null);
 
-  if (isStravaConnected && isLoading) {
+  if (stravaConnected && isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
         <div className="flex items-center gap-2 mb-4">
@@ -69,7 +68,7 @@ export default function PhotoGallery() {
     );
   }
 
-  if (error || !isStravaConnected) {
+  if (error || !stravaConnected) {
     return null;
   }
 

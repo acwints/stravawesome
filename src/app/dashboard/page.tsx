@@ -12,7 +12,6 @@ import TrainingMapWrapper from '@/components/TrainingMapWrapper';
 import PhotoGallery from '@/components/PhotoGallery';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
 import { DashboardDataProvider, useDashboardData } from '@/components/DashboardDataProvider';
-import { Session } from 'next-auth';
 import { disconnectStrava } from '@/services/api';
 
 function LoadingSpinner() {
@@ -23,8 +22,8 @@ function LoadingSpinner() {
   );
 }
 
-function DashboardContent({ session }: { session: Session }) {
-  const { reauthRequired, error } = useDashboardData();
+function DashboardContent() {
+  const { reauthRequired, error, stravaConnected } = useDashboardData();
   const [isReconnecting, setIsReconnecting] = useState(false);
 
   const startStravaAuth = async (force = false) => {
@@ -110,7 +109,7 @@ function DashboardContent({ session }: { session: Session }) {
     );
   }
 
-  if (!session.user.stravaConnected) {
+  if (!stravaConnected) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 max-w-md text-center">
@@ -197,7 +196,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardDataProvider>
-      <DashboardContent session={session} />
+      <DashboardContent />
     </DashboardDataProvider>
   );
 }
