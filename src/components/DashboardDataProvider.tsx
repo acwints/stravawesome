@@ -26,6 +26,7 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
   const { data: session, update } = useSession();
   const userId = session?.user?.id ?? null;
   const sessionUser = session?.user;
+  const isStravaConnected = sessionUser?.stravaConnected ?? false;
   const [activities, setActivities] = useState<StravaActivity[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,11 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
   const hasFetched = useRef(false);
 
   const fetchActivities = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !isStravaConnected) {
+      setActivities(null);
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -78,14 +83,19 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
     } finally {
       setIsLoading(false);
     }
-  }, [userId, sessionUser, update]);
+  }, [userId, sessionUser, isStravaConnected, update]);
 
   const refetch = () => {
     fetchActivities();
   };
 
   useEffect(() => {
-    if (userId && !hasFetched.current) {
+    if (!isStravaConnected) {
+      hasFetched.current = false;
+      return;
+    }
+
+    if (userId && isStravaConnected && !hasFetched.current) {
       hasFetched.current = true;
       // Add a small delay to prevent immediate concurrent calls
       const timer = setTimeout(() => {
@@ -94,7 +104,7 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
       
       return () => clearTimeout(timer);
     }
-  }, [userId, fetchActivities]);
+  }, [userId, isStravaConnected, fetchActivities]);
 
   const value: DashboardContextType = {
     activities,

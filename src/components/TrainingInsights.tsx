@@ -1,19 +1,27 @@
 'use client';
 
 import useSWR from 'swr';
+import { useSession } from 'next-auth/react';
 import { METERS_TO_MILES } from '@/constants';
 import { fetchInsights } from '@/services/api';
 import type { StravaInsightsPayload } from '@/types';
 
 export default function TrainingInsights() {
+  const { data: session } = useSession();
+  const isStravaConnected = session?.user?.stravaConnected ?? false;
+
   const { data, error } = useSWR<StravaInsightsPayload>(
-    '/api/strava/insights',
+    isStravaConnected ? '/api/strava/insights' : null,
     fetchInsights,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false
     }
   );
+
+  if (!isStravaConnected) {
+    return null;
+  }
 
   if (error || !data) {
     return (
