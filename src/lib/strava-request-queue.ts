@@ -17,7 +17,7 @@ interface QueuedRequest {
 class StravaRequestQueue {
   private queue: QueuedRequest[] = [];
   private processing = false;
-  private requestDelay = 200; // 200ms delay between requests
+  private requestDelay = 120; // 120ms delay between requests to stay under Strava rate limits while improving throughput
   private lastRequestTime = 0;
 
   /**

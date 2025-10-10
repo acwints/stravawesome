@@ -96,7 +96,7 @@ export async function GET() {
       throw error;
     }
 
-    // Fetch activities with full details (100 for better coverage)
+    // Fetch most recent activities with full details (capped to 25 to stay within runtime limits)
     // Strava allows 100 requests per 15 minutes, 1000 per day
     // Using aggressive caching to minimize repeated requests
     const cacheKey = `activities:${session.user.id}:detailed`;
@@ -105,7 +105,7 @@ export async function GET() {
     try {
       detailedActivities = await stravaClient.fetchActivitiesWithDetails(
         tokenResult.accessToken,
-        100,
+        25,
         {
           cacheKey,
           ttlMs: 15 * 60 * 1000, // 15 minutes cache
