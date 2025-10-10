@@ -7,10 +7,12 @@ import type { StravaInsightsPayload } from '@/types';
 import { useDashboardData } from './DashboardDataProvider';
 
 export default function WeeklySummary() {
-  const { stravaConnected } = useDashboardData();
+  const { stravaConnected, isInitialized, isLoading: activitiesLoading } = useDashboardData();
+
+  const shouldFetchInsights = stravaConnected && isInitialized;
 
   const { data, error } = useSWR<StravaInsightsPayload>(
-    stravaConnected ? '/api/strava/insights' : null,
+    shouldFetchInsights ? '/api/strava/insights' : null,
     fetchInsights,
     {
       revalidateOnFocus: false,
@@ -20,6 +22,19 @@ export default function WeeklySummary() {
 
   if (!stravaConnected) {
     return null;
+  }
+
+  if (!isInitialized || activitiesLoading) {
+    return (
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Weekly Summary</h3>
+        <div className="space-y-3 animate-pulse">
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+        </div>
+      </div>
+    );
   }
 
   if (error) {

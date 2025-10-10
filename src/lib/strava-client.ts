@@ -9,11 +9,13 @@ import { sharedDataService } from './shared-data-service';
 
 export class StravaAuthError extends Error {
   status: number;
+  code: string;
 
-  constructor(message: string, status: number) {
-    super(message);
+  constructor(code: string, status: number, message?: string) {
+    super(message ?? code);
     this.name = 'StravaAuthError';
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -61,7 +63,7 @@ export class StravaClient {
   /**
    * Get a valid Strava access token for a user, refreshing if necessary
    */
-  async getValidAccessToken(userId: string): Promise<{ account: Account; accessToken: string } | null> {
+  async getValidAccessToken(userId: string): Promise<{ account: Account; accessToken: string }> {
     logger.dbQuery('findFirst', 'Account', { userId, provider: 'strava' });
 
     const stravaAccount = await this.prisma.account.findFirst({
@@ -72,16 +74,18 @@ export class StravaClient {
     });
 
     if (!stravaAccount) {
-      logger.warn('No Strava account found', { userId });
-      return null;
+      logger.warn('No Strava account found', { userId, reason: 'no_account' });
+      sharedDataService.clearUser(userId);
+      throw new StravaAuthError('STRAVA_NOT_CONNECTED', 400, 'Strava account not connected.');
     }
 
     const now = Math.floor(Date.now() / 1000);
     let accessToken = stravaAccount.access_token || '';
 
     if (!accessToken) {
-      logger.error('No access token available', undefined, { userId });
-      return null;
+      logger.warn('Strava account missing access token', { userId, accountId: stravaAccount.id });
+      await this.disconnectUserAccount(userId);
+      throw new StravaAuthError('STRAVA_REAUTH_REQUIRED', 401, 'Strava connection expired. Please reconnect your Strava account.');
     }
 
     // Check if token needs refresh
@@ -95,8 +99,13 @@ export class StravaClient {
       const refreshResult = await this.refreshAccessToken(stravaAccount);
 
       if (!refreshResult) {
-        logger.error('Failed to refresh Strava token', undefined, { userId });
-        return null;
+        logger.error('Failed to refresh Strava token', undefined, {
+          userId,
+          accountId: stravaAccount.id,
+          reason: 'refresh_failed'
+        });
+        await this.disconnectUserAccount(userId);
+        throw new StravaAuthError('STRAVA_REAUTH_REQUIRED', 401, 'Strava connection expired. Please reconnect your Strava account.');
       }
 
       accessToken = refreshResult.access_token;

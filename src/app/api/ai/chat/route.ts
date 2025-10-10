@@ -2,9 +2,9 @@ import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/config';
 import prisma from '@/lib/prisma';
-import { StravaClient } from '@/lib/strava-client';
+import { StravaClient, StravaAuthError } from '@/lib/strava-client';
 import { logger } from '@/lib/logger';
-import { successResponse, ErrorResponses, withErrorHandling, validateEnvVars } from '@/lib/api-response';
+import { successResponse, ErrorResponses, withErrorHandling, validateEnvVars, errorResponse } from '@/lib/api-response';
 import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
 import { headers } from 'next/headers';
 import { sanitizeString } from '@/lib/validation';
@@ -53,12 +53,22 @@ export async function POST(request: NextRequest) {
 
     const stravaClient = new StravaClient(prisma);
 
-    // Get valid access token (with automatic refresh if needed)
-    const tokenResult = await stravaClient.getValidAccessToken(session.user.id);
+    let tokenResult;
+    try {
+      tokenResult = await stravaClient.getValidAccessToken(session.user.id);
+    } catch (error) {
+      if (error instanceof StravaAuthError) {
+        if (error.code === 'STRAVA_REAUTH_REQUIRED') {
+          logger.warn('Strava connection expired for AI chat', { userId: session.user.id });
+          return errorResponse('Strava connection expired. Please reconnect your Strava account.', 401, error.code);
+        }
 
-    if (!tokenResult) {
-      logger.warn('Strava not connected for AI chat', { userId: session.user.id });
-      return ErrorResponses.badRequest('Strava account not connected. Please connect your Strava account first.');
+        if (error.code === 'STRAVA_NOT_CONNECTED') {
+          logger.warn('Strava not connected for AI chat', { userId: session.user.id });
+          return errorResponse('Strava account not connected. Please connect your Strava account first.', 400, error.code);
+        }
+      }
+      throw error;
     }
 
     // Fetch recent activities from Strava (last 30 days)

@@ -35,10 +35,12 @@ async function fetchPhotos(): Promise<ActivityWithPhotos[]> {
 }
 
 export default function PhotoGallery() {
-  const { stravaConnected } = useDashboardData();
+  const { stravaConnected, isInitialized, isLoading: activitiesLoading } = useDashboardData();
 
-  const { data: activities, error, isLoading } = useSWR<ActivityWithPhotos[]>(
-    stravaConnected ? '/api/strava/photos' : null,
+  const shouldFetchPhotos = stravaConnected && isInitialized;
+
+  const { data: activities, error, isLoading: isFetchingPhotos } = useSWR<ActivityWithPhotos[]>(
+    shouldFetchPhotos ? '/api/strava/photos' : null,
     fetchPhotos,
     {
       revalidateOnFocus: false,
@@ -48,7 +50,11 @@ export default function PhotoGallery() {
 
   const [selectedPhoto, setSelectedPhoto] = useState<StravaPhoto | null>(null);
 
-  if (stravaConnected && isLoading) {
+  if (!stravaConnected) {
+    return null;
+  }
+
+  if (!isInitialized || activitiesLoading || isFetchingPhotos) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
         <div className="flex items-center gap-2 mb-4">
@@ -68,7 +74,7 @@ export default function PhotoGallery() {
     );
   }
 
-  if (error || !stravaConnected) {
+  if (error) {
     return null;
   }
 

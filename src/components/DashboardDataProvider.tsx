@@ -11,6 +11,7 @@ interface DashboardData {
   error: string | null;
   reauthRequired: boolean;
   stravaConnected: boolean;
+  isInitialized: boolean;
 }
 
 interface DashboardContextType extends DashboardData {
@@ -32,19 +33,25 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reauthRequired, setReauthRequired] = useState(false);
+  const [isInitialized, setIsInitialized] = useState<boolean>(!(sessionUser?.stravaConnected ?? false));
   const hasFetched = useRef(false);
 
   useEffect(() => {
     setIsStravaConnected(sessionUser?.stravaConnected ?? false);
+    if (!sessionUser?.stravaConnected) {
+      setIsInitialized(true);
+    }
   }, [sessionUser?.stravaConnected]);
 
   const fetchActivities = useCallback(async () => {
     if (!userId || !isStravaConnected) {
       setActivities(null);
       setIsLoading(false);
+      setIsInitialized(true);
       return;
     }
 
+    setIsInitialized(false);
     setIsLoading(true);
     setError(null);
     setReauthRequired(false);
@@ -68,7 +75,7 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
               },
             });
           }
-        } else if (err.code === 'BAD_REQUEST' || err.status === 400) {
+        } else if (err.code === 'STRAVA_NOT_CONNECTED' || err.code === 'BAD_REQUEST' || err.status === 400) {
           setActivities(null);
           if (isStravaConnected) {
             setIsStravaConnected(false);
@@ -87,6 +94,7 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
       }
     } finally {
       setIsLoading(false);
+      setIsInitialized(true);
     }
   }, [userId, sessionUser, isStravaConnected, update]);
 
@@ -97,17 +105,13 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
   useEffect(() => {
     if (!isStravaConnected) {
       hasFetched.current = false;
+      setIsInitialized(true);
       return;
     }
 
     if (userId && isStravaConnected && !hasFetched.current) {
       hasFetched.current = true;
-      // Add a small delay to prevent immediate concurrent calls
-      const timer = setTimeout(() => {
-        fetchActivities();
-      }, 100);
-      
-      return () => clearTimeout(timer);
+      fetchActivities();
     }
   }, [userId, isStravaConnected, fetchActivities]);
 
@@ -117,6 +121,7 @@ export function DashboardDataProvider({ children }: DashboardDataProviderProps) 
     error,
     reauthRequired,
     stravaConnected: isStravaConnected,
+    isInitialized,
     refetch,
   };
 

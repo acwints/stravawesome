@@ -69,11 +69,36 @@ export async function GET() {
     }
 
     const stravaClient = new StravaClient(prisma);
-    const tokenResult = await stravaClient.getValidAccessToken(session.user.id);
+    let tokenResult;
+    try {
+      tokenResult = await stravaClient.getValidAccessToken(session.user.id);
+    } catch (error) {
+      if (error instanceof StravaAuthError) {
+        if (error.code === 'STRAVA_REAUTH_REQUIRED') {
+          logger.warn('Strava connection expired while fetching photos', { userId: session.user.id });
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Strava connection expired. Please reconnect your Strava account.',
+              code: error.code,
+            },
+            { status: 401 }
+          );
+        }
 
-    if (!tokenResult) {
-      logger.warn('Strava not connected for user', { userId: session.user.id });
-      return ErrorResponses.badRequest('Strava account not connected.');
+        if (error.code === 'STRAVA_NOT_CONNECTED') {
+          logger.warn('Strava not connected for user', { userId: session.user.id });
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Strava account not connected.',
+              code: error.code,
+            },
+            { status: 400 }
+          );
+        }
+      }
+      throw error;
     }
 
     // Check shared cache first to avoid duplicate API calls

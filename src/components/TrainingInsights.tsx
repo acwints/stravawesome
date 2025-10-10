@@ -7,10 +7,12 @@ import type { StravaInsightsPayload } from '@/types';
 import { useDashboardData } from './DashboardDataProvider';
 
 export default function TrainingInsights() {
-  const { stravaConnected } = useDashboardData();
+  const { stravaConnected, isInitialized, isLoading: activitiesLoading } = useDashboardData();
+
+  const shouldFetchInsights = stravaConnected && isInitialized;
 
   const { data, error } = useSWR<StravaInsightsPayload>(
-    stravaConnected ? '/api/strava/insights' : null,
+    shouldFetchInsights ? '/api/strava/insights' : null,
     fetchInsights,
     {
       revalidateOnFocus: false,
@@ -20,6 +22,28 @@ export default function TrainingInsights() {
 
   if (!stravaConnected) {
     return null;
+  }
+
+  if (!isInitialized || activitiesLoading) {
+    return (
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Training Insights</h3>
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg animate-pulse">
+            <div className="h-4 bg-blue-200 dark:bg-blue-800 rounded w-1/2 mb-2"></div>
+            <div className="h-3 bg-blue-100 dark:bg-blue-900 rounded w-3/4"></div>
+          </div>
+          <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg animate-pulse">
+            <div className="h-4 bg-green-200 dark:bg-green-800 rounded w-1/2 mb-2"></div>
+            <div className="h-3 bg-green-100 dark:bg-green-900 rounded w-3/4"></div>
+          </div>
+          <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg animate-pulse">
+            <div className="h-4 bg-purple-200 dark:bg-purple-800 rounded w-1/2 mb-2"></div>
+            <div className="h-3 bg-purple-100 dark:bg-purple-900 rounded w-3/4"></div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (error || !data) {

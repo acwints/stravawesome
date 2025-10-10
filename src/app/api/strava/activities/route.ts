@@ -64,12 +64,36 @@ export async function GET() {
 
     const stravaClient = new StravaClient(prisma);
 
-    // Get valid access token (with automatic refresh if needed)
-    const tokenResult = await stravaClient.getValidAccessToken(session.user.id);
+    let tokenResult;
+    try {
+      tokenResult = await stravaClient.getValidAccessToken(session.user.id);
+    } catch (error) {
+      if (error instanceof StravaAuthError) {
+        if (error.code === 'STRAVA_REAUTH_REQUIRED') {
+          logger.warn('Strava connection expired for user', { userId: session.user.id });
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Strava connection expired. Please reconnect your Strava account.',
+              code: error.code,
+            },
+            { status: 401 }
+          );
+        }
 
-    if (!tokenResult) {
-      logger.warn('Strava not connected for user', { userId: session.user.id });
-      return ErrorResponses.badRequest('Strava account not connected. Please connect your Strava account.');
+        if (error.code === 'STRAVA_NOT_CONNECTED') {
+          logger.warn('Strava not connected for user', { userId: session.user.id });
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Strava account not connected. Please connect your Strava account.',
+              code: error.code,
+            },
+            { status: 400 }
+          );
+        }
+      }
+      throw error;
     }
 
     // Fetch activities with full details (100 for better coverage)
