@@ -11,7 +11,9 @@ import AIChat from '@/components/AIChat';
 import TrainingMapWrapper from '@/components/TrainingMapWrapper';
 import PhotoGallery from '@/components/PhotoGallery';
 import ActivityHeatmap from '@/components/ActivityHeatmap';
+import PremiumGate from '@/components/PremiumGate';
 import { DashboardDataProvider, useDashboardData } from '@/components/DashboardDataProvider';
+import { useSubscription } from '@/hooks/useSubscription';
 import { disconnectStrava } from '@/services/api';
 
 function LoadingSpinner() {
@@ -24,6 +26,7 @@ function LoadingSpinner() {
 
 function DashboardContent() {
   const { reauthRequired, error, stravaConnected } = useDashboardData();
+  const { isPremium } = useSubscription();
   const [isReconnecting, setIsReconnecting] = useState(false);
 
   const startStravaAuth = async (force = false) => {
@@ -58,8 +61,6 @@ function DashboardContent() {
       alert('Unable to start the Strava reconnect flow. Please try again.');
     }
   };
-
-  // Premium features are now available to all users
 
   if (reauthRequired) {
     return (
@@ -132,7 +133,10 @@ function DashboardContent() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <AIChat />
+      {/* AI Training Coach - PREMIUM */}
+      <PremiumGate isPremium={isPremium} featureName="AI Training Coach">
+        <AIChat />
+      </PremiumGate>
 
       {/* Activity Heatmap - FREE */}
       <Suspense
@@ -146,34 +150,49 @@ function DashboardContent() {
         <ActivityHeatmap />
       </Suspense>
 
-      <Suspense fallback={<GoalsSkeleton />}>
-        <GoalsProgress />
-      </Suspense>
+      {/* Goals - PREMIUM */}
+      <PremiumGate isPremium={isPremium} featureName="Goal Setting & Tracking">
+        <Suspense fallback={<GoalsSkeleton />}>
+          <GoalsProgress />
+        </Suspense>
+      </PremiumGate>
 
-      <Suspense fallback={<WeeklyChartSkeleton />}>
-        <WeeklyChart />
-      </Suspense>
+      {/* Weekly Analytics - PREMIUM */}
+      <PremiumGate isPremium={isPremium} featureName="Training Insights & Analytics">
+        <Suspense fallback={<WeeklyChartSkeleton />}>
+          <WeeklyChart />
+        </Suspense>
+      </PremiumGate>
 
-      <Suspense fallback={<RecentActivitiesSkeleton />}>
-        <RecentActivities />
-      </Suspense>
+      {/* Activities List - PREMIUM */}
+      <PremiumGate isPremium={isPremium} featureName="Activity Tracking">
+        <Suspense fallback={<RecentActivitiesSkeleton />}>
+          <RecentActivities />
+        </Suspense>
+      </PremiumGate>
 
-      <Suspense
-        fallback={
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
-            <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-              ))}
+      {/* Photo Gallery - PREMIUM */}
+      <PremiumGate isPremium={isPremium} featureName="Photo Gallery">
+        <Suspense
+          fallback={
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
+              <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+                ))}
+              </div>
             </div>
-          </div>
-        }
-      >
-        <PhotoGallery />
-      </Suspense>
+          }
+        >
+          <PhotoGallery />
+        </Suspense>
+      </PremiumGate>
 
-      <TrainingMapWrapper />
+      {/* Training Map - PREMIUM */}
+      <PremiumGate isPremium={isPremium} featureName="Interactive Route Maps">
+        <TrainingMapWrapper />
+      </PremiumGate>
     </div>
   );
 }

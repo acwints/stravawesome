@@ -1,10 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { validateEvent, WebhookVerificationError } from '@polar-sh/sdk/webhooks';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
+// Webhook payload types for type safety
+interface WebhookPayload {
+  type: string;
+  data: {
+    id: string;
+    metadata?: { userId?: string };
+    subscription_id?: string;
+    subscription?: { current_period_end?: string };
+    user_email?: string;
+    status?: string;
+    current_period_end?: string;
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const payload = await request.json();
+    // Get the raw body for signature verification
+    const requestBody = await request.text();
+
+    // Validate webhook signature if secret is configured
+    const webhookSecret = process.env.POLAR_WEBHOOK_SECRET;
+    let payload: WebhookPayload;
+
+    if (webhookSecret) {
+      const webhookHeaders = {
+        'webhook-id': request.headers.get('webhook-id') ?? '',
+        'webhook-timestamp': request.headers.get('webhook-timestamp') ?? '',
+        'webhook-signature': request.headers.get('webhook-signature') ?? '',
+      };
+
+      try {
+        payload = validateEvent(requestBody, webhookHeaders, webhookSecret) as WebhookPayload;
+      } catch (error) {
+        if (error instanceof WebhookVerificationError) {
+          logger.warn('Webhook signature verification failed', {
+            error: error.message,
+          });
+          return NextResponse.json(
+            { error: 'Invalid webhook signature' },
+            { status: 403 }
+          );
+        }
+        throw error;
+      }
+    } else {
+      // In development without secret, parse JSON directly but log warning
+      if (process.env.NODE_ENV === 'production') {
+        logger.error('POLAR_WEBHOOK_SECRET not configured in production');
+        return NextResponse.json(
+          { error: 'Webhook secret not configured' },
+          { status: 500 }
+        );
+      }
+      logger.warn('Webhook signature validation skipped - POLAR_WEBHOOK_SECRET not set');
+      payload = JSON.parse(requestBody);
+    }
 
     logger.info('Polar webhook received', { type: payload.type });
 
@@ -57,31 +111,33 @@ export async function POST(request: NextRequest) {
         });
 
         // Find user by email from subscription
-        const user = await prisma.user.findUnique({
-          where: { email: payload.data.user_email },
-        });
-
-        if (user) {
-          await prisma.subscription.upsert({
-            where: { userId: user.id },
-            create: {
-              userId: user.id,
-              polarSubscriptionId: payload.data.id,
-              status: payload.data.status,
-              plan: 'annual',
-              currentPeriodEnd: payload.data.current_period_end
-                ? new Date(payload.data.current_period_end)
-                : null,
-            },
-            update: {
-              status: payload.data.status,
-              currentPeriodEnd: payload.data.current_period_end
-                ? new Date(payload.data.current_period_end)
-                : null,
-            },
+        if (payload.data.user_email) {
+          const user = await prisma.user.findUnique({
+            where: { email: payload.data.user_email },
           });
 
-          logger.info('Subscription updated via subscription event', { userId: user.id });
+          if (user) {
+            await prisma.subscription.upsert({
+              where: { userId: user.id },
+              create: {
+                userId: user.id,
+                polarSubscriptionId: payload.data.id,
+                status: payload.data.status || 'active',
+                plan: 'annual',
+                currentPeriodEnd: payload.data.current_period_end
+                  ? new Date(payload.data.current_period_end)
+                  : null,
+              },
+              update: {
+                status: payload.data.status || 'active',
+                currentPeriodEnd: payload.data.current_period_end
+                  ? new Date(payload.data.current_period_end)
+                  : null,
+              },
+            });
+
+            logger.info('Subscription updated via subscription event', { userId: user.id });
+          }
         }
         break;
 
