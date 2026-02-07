@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/config';
 import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,27 +13,29 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
-    console.log('Session:', session);
-    console.log('Code:', code);
-    console.log('State:', state);
+    logger.debug('Strava callback received', {
+      hasSession: !!session,
+      hasCode: !!code,
+      hasState: !!state,
+    });
 
     if (error) {
-      console.error('Strava authorization error:', error);
+      logger.warn('Strava authorization denied by user', { error });
       return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=strava_denied`);
     }
 
     if (!session?.user?.id) {
-      console.error('No session or user ID found');
+      logger.warn('Strava callback without active session');
       return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=no_session`);
     }
 
     if (!code) {
-      console.error('No authorization code found');
+      logger.warn('Strava callback missing authorization code', { userId: session.user.id });
       return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=no_code`);
     }
 
     if (!state) {
-      console.error('No state parameter found');
+      logger.warn('Strava callback missing state parameter', { userId: session.user.id });
       return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=invalid_state`);
     }
 
@@ -51,17 +54,27 @@ export async function GET(request: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
-      console.error('Token exchange failed:', await tokenResponse.text());
+      const errorText = await tokenResponse.text();
+      logger.error('Strava token exchange failed', undefined, {
+        status: tokenResponse.status,
+        userId: session.user.id,
+        error: errorText,
+      });
       return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=token_exchange_failed`);
     }
 
     const tokenData = await tokenResponse.json();
-    console.log('Token data:', tokenData);
 
     if (!tokenData.access_token) {
-      console.error('Failed to get access token:', tokenData);
+      logger.error('Strava token response missing access_token', undefined, {
+        userId: session.user.id,
+        hasRefreshToken: !!tokenData.refresh_token,
+        hasAthlete: !!tokenData.athlete,
+      });
       return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=no_access_token`);
     }
+
+    logger.info('Strava token exchange successful', { userId: session.user.id });
 
     try {
       // First try to find if this Strava account is connected to any user
@@ -73,7 +86,10 @@ export async function GET(request: NextRequest) {
       });
 
       if (existingStravaConnection && existingStravaConnection.userId !== session.user.id) {
-        console.error('Strava account already connected to another user');
+        logger.warn('Strava account already connected to another user', {
+          userId: session.user.id,
+          existingUserId: existingStravaConnection.userId,
+        });
         return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=already_connected`);
       }
 
@@ -99,6 +115,7 @@ export async function GET(request: NextRequest) {
           where: { id: existingAccount.id },
           data: accountData,
         });
+        logger.info('Updated existing Strava connection', { userId: session.user.id });
       } else {
         // Create new account
         await prisma.account.create({
@@ -110,20 +127,23 @@ export async function GET(request: NextRequest) {
             ...accountData,
           },
         });
+        logger.info('Created new Strava connection', { userId: session.user.id });
       }
 
       return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?success=connected`);
-    } catch (error) {
-      console.error('Database error:', error);
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
+    } catch (dbError: unknown) {
+      logger.error('Database error during Strava connection', dbError instanceof Error ? dbError : undefined, {
+        userId: session.user.id,
+      });
+      if (dbError instanceof Prisma.PrismaClientKnownRequestError) {
+        if (dbError.code === 'P2002') {
           return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=already_connected`);
         }
       }
       return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=database_error`);
     }
   } catch (error) {
-    console.error('Strava connection error:', error instanceof Error ? error.message : error);
+    logger.error('Strava connection error', error instanceof Error ? error : undefined);
     return Response.redirect(`${process.env.NEXTAUTH_URL}/dashboard?error=connection_failed`);
   }
-} 
+}

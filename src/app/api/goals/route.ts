@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma';
 import { ACTIVITY_TYPES } from '@/constants';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
+import { BoundedCache } from '@/lib/cache';
 
 type GoalPayload = GoalModel | {
   userId: string;
@@ -14,7 +15,11 @@ type GoalPayload = GoalModel | {
   targetDistance: number;
 };
 
-const goalsCache = new Map<string, { data: GoalPayload[]; expiresAt: number }>();
+const goalsCache = new BoundedCache<GoalPayload[]>({ maxSize: 200, defaultTtlMs: 60 * 1000 });
+
+function currentYear(): number {
+  return new Date().getFullYear();
+}
 
 // Get user's goals
 export async function GET() {
@@ -29,27 +34,27 @@ export async function GET() {
       return ErrorResponses.unauthorized();
     }
 
+    const year = currentYear();
     const cacheKey = session.user.id;
     const cached = goalsCache.get(cacheKey);
-    const now = Date.now();
 
-    if (cached && cached.expiresAt > now) {
+    if (cached) {
       const duration = Date.now() - startTime;
       logger.info('Serving cached goals', { userId: session.user.id });
       logger.apiResponse('GET', '/api/goals', 200, duration, {
-        goalsCount: cached.data.length,
+        goalsCount: cached.length,
         cache: true,
       });
 
-      return successResponse(cached.data);
+      return successResponse(cached);
     }
 
-    logger.dbQuery('findMany', 'Goal', { userId: session.user.id, year: 2025 });
+    logger.dbQuery('findMany', 'Goal', { userId: session.user.id, year });
 
     const goals = await prisma.goal.findMany({
       where: {
         userId: session.user.id,
-        year: 2025,
+        year,
       },
     });
 
@@ -58,15 +63,12 @@ export async function GET() {
       logger.info('No goals found, returning defaults', { userId: session.user.id });
       const defaultGoals = ACTIVITY_TYPES.map(({ type }) => ({
         userId: session.user.id,
-        year: 2025,
+        year,
         activityType: type,
         targetDistance: 50,
       }));
 
-      goalsCache.set(cacheKey, {
-        data: defaultGoals,
-        expiresAt: Date.now() + 60 * 1000,
-      });
+      goalsCache.set(cacheKey, defaultGoals);
 
       const duration = Date.now() - startTime;
       logger.apiResponse('GET', '/api/goals', 200, duration, { goalsCount: defaultGoals.length });
@@ -74,10 +76,7 @@ export async function GET() {
       return successResponse(defaultGoals);
     }
 
-    goalsCache.set(cacheKey, {
-      data: goals,
-      expiresAt: Date.now() + 60 * 1000,
-    });
+    goalsCache.set(cacheKey, goals);
 
     const duration = Date.now() - startTime;
     logger.apiResponse('GET', '/api/goals', 200, duration, { goalsCount: goals.length });
@@ -118,6 +117,7 @@ export async function POST(request: NextRequest) {
       return ErrorResponses.badRequest('Invalid goal data. Each goal must have a valid activityType and targetDistance.');
     }
 
+    const year = currentYear();
     logger.dbQuery('upsert', 'Goal', { userId: session.user.id, count: goals.length });
 
     // Upsert each goal
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
         where: {
           userId_year_activityType: {
             userId: session.user.id,
-            year: 2025,
+            year,
             activityType: goal.activityType,
           },
         },
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
         },
         create: {
           userId: session.user.id,
-          year: 2025,
+          year,
           activityType: goal.activityType,
           targetDistance: goal.targetDistance || 50,
         },
@@ -146,14 +146,11 @@ export async function POST(request: NextRequest) {
 
     const updatedGoals = await Promise.all(upsertPromises);
 
-    goalsCache.set(cacheKey, {
-      data: updatedGoals,
-      expiresAt: Date.now() + 60 * 1000,
-    });
+    goalsCache.set(cacheKey, updatedGoals);
 
     const duration = Date.now() - startTime;
     logger.apiResponse('POST', '/api/goals', 200, duration, { goalsCount: updatedGoals.length });
 
     return successResponse(updatedGoals, 'Goals updated successfully');
   });
-} 
+}

@@ -6,6 +6,7 @@ import { PrismaClient, Account } from '@prisma/client';
 import { logger } from './logger';
 import { stravaRequestQueue } from './strava-request-queue';
 import { sharedDataService } from './shared-data-service';
+import { BoundedCache } from './cache';
 
 export class StravaAuthError extends Error {
   status: number;
@@ -29,12 +30,11 @@ interface FetchActivitiesOptions {
 
 interface ActivitiesCacheEntry {
   value: unknown[];
-  expiresAt: number;
   requestedPerPage: number;
 }
 
-const activitiesCache = new Map<string, ActivitiesCacheEntry>();
-const activityDetailsCache = new Map<number, { value: unknown; expiresAt: number }>();
+const activitiesCache = new BoundedCache<ActivitiesCacheEntry>({ maxSize: 200, defaultTtlMs: 15 * 60 * 1000 });
+const activityDetailsCache = new BoundedCache<unknown>({ maxSize: 500, defaultTtlMs: 30 * 60 * 1000 });
 
 export interface StravaTokenRefreshResult {
   access_token: string;
@@ -183,19 +183,19 @@ export class StravaClient {
     options: FetchActivitiesOptions = {}
   ): Promise<unknown[]> {
     const { cacheKey, ttlMs = 15 * 60 * 1000, after, timeoutMs = 12_000 } = options; // Increased to 15 minutes
-    const now = Date.now();
 
-    let cachedEntry: ActivitiesCacheEntry | undefined;
     if (cacheKey) {
-      cachedEntry = activitiesCache.get(cacheKey);
-      if (cachedEntry && cachedEntry.expiresAt > now && cachedEntry.requestedPerPage >= perPage) {
+      const cached = activitiesCache.get(cacheKey);
+      if (cached && cached.requestedPerPage >= perPage) {
         logger.debug('Serving cached Strava activities', { cacheKey, perPage });
-        return cachedEntry.value;
+        return cached.value;
       }
     }
 
-    const staleValue = cachedEntry && cachedEntry.requestedPerPage >= perPage
-      ? cachedEntry.value
+    // Check for stale entry that can be used as fallback
+    const staleEntry = cacheKey ? activitiesCache.getEntry(cacheKey) : undefined;
+    const staleValue = staleEntry && staleEntry.value.requestedPerPage >= perPage
+      ? staleEntry.value.value
       : undefined;
 
     // Use request queue to prevent rate limiting
@@ -284,9 +284,8 @@ export class StravaClient {
         if (cacheKey) {
           activitiesCache.set(cacheKey, {
             value: activities,
-            expiresAt: Date.now() + ttlMs,
             requestedPerPage: perPage,
-          });
+          }, ttlMs);
         }
 
         return activities;
@@ -317,12 +316,11 @@ export class StravaClient {
    */
   async fetchActivityDetails(accessToken: string, activityId: number, retries = 3): Promise<unknown> {
     // Check cache first (30 min TTL)
-    const cached = activityDetailsCache.get(activityId);
-    const now = Date.now();
+    const cached = activityDetailsCache.get(String(activityId));
 
-    if (cached && cached.expiresAt > now) {
+    if (cached) {
       logger.debug('Serving cached activity details', { activityId });
-      return cached.value;
+      return cached;
     }
 
     // Use request queue to prevent rate limiting
@@ -344,10 +342,7 @@ export class StravaClient {
             const details = await response.json();
 
             // Cache for 30 minutes
-            activityDetailsCache.set(activityId, {
-              value: details,
-              expiresAt: now + 30 * 60 * 1000
-            });
+            activityDetailsCache.set(String(activityId), details);
 
             return details;
           } else if (response.status === 429) {

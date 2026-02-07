@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth';
+import { NextResponse } from 'next/server';
 import { authOptions } from '../../auth/config';
 import prisma from '@/lib/prisma';
 import { StravaClient, StravaAuthError } from '@/lib/strava-client';
@@ -9,6 +10,7 @@ import { stravaRequestQueue } from '@/lib/strava-request-queue';
 import { sharedDataService } from '@/lib/shared-data-service';
 import { headers } from 'next/headers';
 import type { StravaActivity } from '@/types';
+import { BoundedCache } from '@/lib/cache';
 
 type StravaActivityWithPhotos = StravaActivity & { photo_count?: number };
 
@@ -31,7 +33,7 @@ interface ActivityWithPhotos {
   photos: StravaPhoto[];
 }
 
-const photosCache = new Map<string, { data: ActivityWithPhotos[]; expiresAt: number }>();
+const photosCache = new BoundedCache<ActivityWithPhotos[]>({ maxSize: 100, defaultTtlMs: 10 * 60 * 1000 });
 
 export async function GET() {
   return withErrorHandling(async () => {
@@ -55,17 +57,16 @@ export async function GET() {
 
     const cacheKey = `photos:${session.user.id}`;
     const cached = photosCache.get(cacheKey);
-    const now = Date.now();
 
-    if (cached && cached.expiresAt > now) {
+    if (cached) {
       logger.info('Serving cached Strava photos', { userId: session.user.id });
       const duration = Date.now() - startTime;
       logger.apiResponse('GET', '/api/strava/photos', 200, duration, {
         cache: true,
-        photoCount: cached.data.reduce((sum, a) => sum + a.photos.length, 0),
+        photoCount: cached.reduce((sum, a) => sum + a.photos.length, 0),
       });
 
-      return successResponse(cached.data);
+      return successResponse(cached);
     }
 
     const stravaClient = new StravaClient(prisma);
@@ -106,12 +107,12 @@ export async function GET() {
       | StravaActivityWithPhotos[]
       | undefined;
     let activities: StravaActivityWithPhotos[] = [];
-    
+
     if (sharedActivities) {
       activities = sharedActivities.slice(0, 30); // Use shared data
-      logger.info('Using shared activities for photos', { 
+      logger.info('Using shared activities for photos', {
         activityCount: activities.length,
-        userId: session.user.id 
+        userId: session.user.id
       });
     } else {
       try {
@@ -141,7 +142,7 @@ export async function GET() {
           error: error instanceof Error ? error.message : String(error),
           userId: session.user.id
         });
-        
+
         // Return empty result instead of failing completely
         const duration = Date.now() - startTime;
         logger.apiResponse('GET', '/api/strava/photos', 200, duration, {
@@ -185,14 +186,14 @@ export async function GET() {
               // Rate limited - wait longer before retry
               const retryAfter = photoResponse.headers.get('retry-after');
               const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
-              
+
               logger.warn('Rate limited, waiting before retry', {
                 activityId: activity.id,
                 attempt,
                 waitTime: waitTime / 1000,
                 retryAfter,
               });
-              
+
               if (attempt < retries) {
                 await delay(waitTime);
                 continue;
@@ -225,7 +226,7 @@ export async function GET() {
               error: error instanceof Error ? error.message : String(error),
               attempt,
             });
-            
+
             if (attempt < retries) {
               await delay(Math.pow(2, attempt) * 1000); // Exponential backoff
             }
@@ -238,10 +239,10 @@ export async function GET() {
     // Process activities in smaller batches to avoid overwhelming the API
     const activitiesToCheck = activities.slice(0, 15); // Reduced from 20 to 15
     const batchSize = 5; // Process 5 activities at a time
-    
+
     for (let i = 0; i < activitiesToCheck.length; i += batchSize) {
       const batch = activitiesToCheck.slice(i, i + batchSize);
-      
+
       // Process batch sequentially to avoid rate limits
       for (const activity of batch) {
         if (rateLimited) {
@@ -275,7 +276,7 @@ export async function GET() {
           }
           throw error;
         }
-        
+
         if (photos && photos.length > 0) {
           foundCount++;
           logger.info('Found photos for activity', {
@@ -309,10 +310,7 @@ export async function GET() {
       totalPhotos: activitiesWithPhotos.reduce((sum, a) => sum + a.photos.length, 0),
     });
 
-    photosCache.set(cacheKey, {
-      data: activitiesWithPhotos,
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-    });
+    photosCache.set(cacheKey, activitiesWithPhotos);
 
     const duration = Date.now() - startTime;
     const summary = {
@@ -327,4 +325,3 @@ export async function GET() {
     return successResponse(activitiesWithPhotos);
   });
 }
-import { NextResponse } from 'next/server';

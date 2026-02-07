@@ -10,8 +10,9 @@ import type { StravaActivity, StravaInsightsPayload } from '@/types';
 import { headers } from 'next/headers';
 import { startOfWeek, endOfWeek, subWeeks, startOfMonth, subDays } from 'date-fns';
 import { NextResponse } from 'next/server';
+import { BoundedCache } from '@/lib/cache';
 
-const insightsCache = new Map<string, { data: StravaInsightsPayload; expiresAt: number }>();
+const insightsCache = new BoundedCache<StravaInsightsPayload>({ maxSize: 100, defaultTtlMs: 2 * 60 * 1000 });
 
 export async function GET() {
   return withErrorHandling(async () => {
@@ -35,17 +36,16 @@ export async function GET() {
 
     const cacheKey = `insights:${session.user.id}`;
     const cached = insightsCache.get(cacheKey);
-    const now = Date.now();
 
-    if (cached && cached.expiresAt > now) {
+    if (cached) {
       logger.info('Serving cached Strava insights', { userId: session.user.id });
       const duration = Date.now() - startTime;
       logger.apiResponse('GET', '/api/strava/insights', 200, duration, {
         cache: true,
-        activitiesCount: cached.data.weeklySummary.totalActivities,
+        activitiesCount: cached.weeklySummary.totalActivities,
       });
 
-      return successResponse(cached.data);
+      return successResponse(cached);
     }
 
     const stravaClient = new StravaClient(prisma);
@@ -219,10 +219,7 @@ export async function GET() {
       insights,
     };
 
-    insightsCache.set(cacheKey, {
-      data: payload,
-      expiresAt: Date.now() + 2 * 60 * 1000,
-    });
+    insightsCache.set(cacheKey, payload);
 
     const duration = Date.now() - startTime;
     logger.apiResponse('GET', '/api/strava/insights', 200, duration, {

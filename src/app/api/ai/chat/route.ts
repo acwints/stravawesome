@@ -78,14 +78,23 @@ export async function POST(request: NextRequest) {
 
     logger.externalApi('Strava', `GET /athlete/activities (after=${unixTimestamp})`);
 
-    const activitiesResponse = await fetch(
-      `https://www.strava.com/api/v3/athlete/activities?after=${unixTimestamp}&per_page=100`,
-      {
-        headers: {
-          Authorization: `Bearer ${tokenResult.accessToken}`,
-        },
-      }
-    );
+    const controller = new AbortController();
+    const fetchTimeout = setTimeout(() => controller.abort(), 15_000);
+
+    let activitiesResponse: Response;
+    try {
+      activitiesResponse = await fetch(
+        `https://www.strava.com/api/v3/athlete/activities?after=${unixTimestamp}&per_page=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${tokenResult.accessToken}`,
+          },
+          signal: controller.signal,
+        }
+      );
+    } finally {
+      clearTimeout(fetchTimeout);
+    }
 
     if (!activitiesResponse.ok) {
       logger.error('Failed to fetch activities for AI chat', undefined, {
