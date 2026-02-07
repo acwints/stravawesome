@@ -52,16 +52,19 @@ export function middleware(request: NextRequest) {
 
   // Add CORS headers for API routes
   if (pathname.startsWith('/api')) {
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
-    response.headers.set('Access-Control-Allow-Origin', process.env.NEXTAUTH_URL || '*');
-    response.headers.set(
-      'Access-Control-Allow-Methods',
-      'GET,DELETE,PATCH,POST,PUT,OPTIONS'
-    );
-    response.headers.set(
-      'Access-Control-Allow-Headers',
-      'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-    );
+    const allowedOrigin = process.env.NEXTAUTH_URL;
+    if (allowedOrigin) {
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
+      response.headers.set(
+        'Access-Control-Allow-Methods',
+        'GET,DELETE,PATCH,POST,PUT,OPTIONS'
+      );
+      response.headers.set(
+        'Access-Control-Allow-Headers',
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+      );
+    }
   }
 
   // Handle OPTIONS requests

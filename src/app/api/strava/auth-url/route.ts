@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { generateOAuthState } from '@/utils/oauth';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
       state,
     });
   } catch (error) {
-    console.error('Error generating Strava auth URL:', error);
+    logger.error('Error generating Strava auth URL', error instanceof Error ? error : undefined);
     return Response.json({ error: 'Failed to generate auth URL' }, { status: 500 });
   }
 } 
