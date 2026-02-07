@@ -43,7 +43,12 @@ export async function GET() {
         }
       } catch (error) {
         // If SDK method fails, fall back to direct portal URL
-        logger.warn('Failed to create customer session, using fallback', error);
+        const errorContext = error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        } : error;
+        logger.warn('Failed to create customer session, using fallback', { error: errorContext });
       }
     }
 
