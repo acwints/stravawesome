@@ -133,6 +133,32 @@ function DashboardContent() {
 
   return (
     <div className="space-y-4 animate-fade-in">
+      {/* Single upgrade CTA when not premium */}
+      {!isPremium && (
+        <div className="rounded-lg border border-primary-200 dark:border-primary-800 bg-gradient-to-r from-primary-50 to-primary-100/50 dark:from-primary-900/20 dark:to-primary-800/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-500 text-white flex-shrink-0">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 dark:text-gray-100">Unlock all features</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">AI Coach, Goals, Insights, Photos &amp; more — $12/year</p>
+            </div>
+          </div>
+          <a
+            href="/pricing"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors flex-shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Upgrade to Premium
+          </a>
+        </div>
+      )}
+
       {/* AI Training Coach - PREMIUM */}
       <PremiumGate isPremium={isPremium} featureName="AI Training Coach">
         <AIChat />
@@ -142,8 +168,15 @@ function DashboardContent() {
       <Suspense
         fallback={
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
-            <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse" />
-            <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
+                <svg className="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            </div>
+            <div className="h-24 bg-gray-100 dark:bg-gray-700/80 rounded-lg animate-pulse" />
           </div>
         }
       >
