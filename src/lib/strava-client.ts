@@ -7,6 +7,7 @@ import { logger } from './logger';
 import { stravaRequestQueue } from './strava-request-queue';
 import { sharedDataService } from './shared-data-service';
 import { BoundedCache } from './cache';
+import { stravaApiUrl, stravaBasicAuthHeader, stravaOAuthUrl } from './strava-api';
 
 export class StravaAuthError extends Error {
   status: number;
@@ -51,6 +52,24 @@ export class StravaClient {
 
   async disconnectUserAccount(userId: string): Promise<void> {
     logger.info('Disconnecting Strava account for user', { userId });
+    const stravaAccount = await this.prisma.account.findFirst({
+      where: {
+        userId,
+        provider: 'strava',
+      },
+      select: {
+        id: true,
+        access_token: true,
+        refresh_token: true,
+      },
+    });
+
+    const tokenToRevoke = stravaAccount?.refresh_token || stravaAccount?.access_token;
+
+    if (tokenToRevoke) {
+      await this.revokeToken(tokenToRevoke, stravaAccount?.refresh_token ? 'refresh_token' : 'access_token');
+    }
+
     await this.prisma.account.deleteMany({
       where: {
         userId,
@@ -58,6 +77,45 @@ export class StravaClient {
       },
     });
     sharedDataService.clearUser(userId);
+  }
+
+  private async revokeToken(token: string, tokenTypeHint: 'access_token' | 'refresh_token'): Promise<void> {
+    const authHeader = stravaBasicAuthHeader();
+
+    if (!authHeader) {
+      logger.warn('Skipping Strava token revoke because client credentials are missing');
+      return;
+    }
+
+    try {
+      logger.externalApi('Strava', 'POST /oauth/revoke');
+
+      const body = new URLSearchParams({
+        token,
+        token_type_hint: tokenTypeHint,
+      });
+
+      const response = await fetch(stravaOAuthUrl('revoke'), {
+        method: 'POST',
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body,
+      });
+
+      if (!response.ok) {
+        logger.warn('Strava token revoke failed; continuing local disconnect', {
+          status: response.status,
+          tokenTypeHint,
+        });
+      }
+    } catch (error) {
+      logger.warn('Error revoking Strava token; continuing local disconnect', {
+        error: error instanceof Error ? error.message : String(error),
+        tokenTypeHint,
+      });
+    }
   }
 
   /**
@@ -139,7 +197,7 @@ export class StravaClient {
     try {
       logger.externalApi('Strava', 'POST /oauth/token (refresh)');
 
-      const response = await fetch('https://www.strava.com/oauth/token', {
+      const response = await fetch(stravaOAuthUrl('token'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -201,11 +259,10 @@ export class StravaClient {
     // Use request queue to prevent rate limiting
     return stravaRequestQueue.enqueue(async () => {
       try {
-        const query = new URL('https://www.strava.com/api/v3/athlete/activities');
-        query.searchParams.set('per_page', Math.min(200, Math.max(perPage, 1)).toString());
-        if (after) {
-          query.searchParams.set('after', after.toString());
-        }
+        const query = stravaApiUrl('/athlete/activities', {
+          per_page: Math.min(200, Math.max(perPage, 1)),
+          after,
+        });
 
         logger.externalApi('Strava', `GET /athlete/activities${query.search}`);
 
@@ -330,7 +387,7 @@ export class StravaClient {
           logger.externalApi('Strava', `GET /activities/${activityId}`);
 
           const response = await fetch(
-            `https://www.strava.com/api/v3/activities/${activityId}`,
+            stravaApiUrl(`/activities/${activityId}`),
             {
               headers: {
                 Authorization: `Bearer ${accessToken}`,

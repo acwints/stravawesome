@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       client_id: process.env.STRAVA_CLIENT_ID,
       response_type: 'code',
       redirect_uri: `${process.env.NEXTAUTH_URL}/api/strava/callback`,
-      scope: 'activity:read_all,profile:read_all',
+      scope: 'activity:read_all',
       state,
       ...(forceLogin ? { approval_prompt: 'force' } : {}),
     });
@@ -30,4 +30,4 @@ export async function GET(request: NextRequest) {
     logger.error('Error generating Strava auth URL', error instanceof Error ? error : undefined);
     return Response.json({ error: 'Failed to generate auth URL' }, { status: 500 });
   }
-} 
+}

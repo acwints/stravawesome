@@ -4,11 +4,11 @@ A Next.js application that integrates with Strava API for tracking and analyzing
 
 ## Tech Stack
 
-- Next.js 14 with App Router
+- Next.js 15 with App Router
 - TypeScript
 - Tailwind CSS
 - NextAuth.js for authentication
-- Supabase for database
+- Prisma/Postgres for database access
 - Strava API integration
 
 ## Getting Started
@@ -31,8 +31,13 @@ The following environment variables are required:
 - `NEXTAUTH_SECRET`: Secret for NextAuth.js
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: Google OAuth credentials
 - `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET`: Strava API credentials
-- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase configuration
-- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key
+- `DATABASE_URL`: Postgres connection string for Prisma
+- `OPENAI_API_KEY`: Required for the AI chat feature
+- `POLAR_*`: Required for paid subscription flows
+
+Optional:
+
+- `STRAVA_API_BASE_URL`: Defaults to `https://www.strava.com/api/v3`; set to `https://www.api-v3.strava.com` before Strava's June 1, 2027 cutoff.
 
 ## Features
 

@@ -11,6 +11,7 @@ import { sharedDataService } from '@/lib/shared-data-service';
 import { headers } from 'next/headers';
 import type { StravaActivity } from '@/types';
 import { BoundedCache } from '@/lib/cache';
+import { stravaApiUrl } from '@/lib/strava-api';
 
 type StravaActivityWithPhotos = StravaActivity & { photo_count?: number };
 
@@ -171,7 +172,10 @@ export async function GET() {
         for (let attempt = 1; attempt <= retries; attempt++) {
           try {
             const photoResponse = await fetch(
-              `https://www.strava.com/api/v3/activities/${activity.id}/photos?size=600&photo_sources=true`,
+              stravaApiUrl(`/activities/${activity.id}/photos`, {
+                size: 600,
+                photo_sources: true,
+              }),
               {
                 headers: {
                   Authorization: `Bearer ${tokenResult.accessToken}`,

@@ -4,22 +4,34 @@ declare global {
   var prisma: PrismaClient | undefined
 }
 
-const prismaClientSingleton = () => {
-  // Prefer DATABASE_URL, but support common Vercel/Supabase env vars as fallbacks
-  const rawDatabaseUrl =
+const BUILD_TIME_DATABASE_URL = 'postgresql://user:password@localhost:5432/stravawesome_build'
+
+function resolveDatabaseUrl(): string {
+  // Prefer DATABASE_URL, but support common Vercel/Supabase env vars as fallbacks.
+  const configuredUrl =
     process.env.DATABASE_URL ||
     process.env.POSTGRES_PRISMA_URL ||
     process.env.POSTGRES_URL ||
     process.env.POSTGRES_URL_NON_POOLING
 
-  if (!rawDatabaseUrl) {
+  if (configuredUrl) {
+    return configuredUrl
+  }
+
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return BUILD_TIME_DATABASE_URL
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    return BUILD_TIME_DATABASE_URL
+  }
+
     throw new Error(
       'Prisma: DATABASE_URL is not set. Provide DATABASE_URL (or POSTGRES_PRISMA_URL/POSTGRES_URL) in your environment.'
     )
-  }
+}
 
-  // Normalize URL for Supabase pooled connections and ensure SSL in production
-  const normalizeDatabaseUrl = (inputUrl: string): string => {
+function normalizeDatabaseUrl(inputUrl: string): string {
     try {
       const url = new URL(inputUrl)
 
@@ -50,9 +62,10 @@ const prismaClientSingleton = () => {
       // If URL parsing fails, return the original string
       return inputUrl
     }
-  }
+}
 
-  const databaseUrl = normalizeDatabaseUrl(rawDatabaseUrl)
+const prismaClientSingleton = () => {
+  const databaseUrl = normalizeDatabaseUrl(resolveDatabaseUrl())
 
   return new PrismaClient({
     log: process.env.NODE_ENV === 'production'
@@ -66,10 +79,20 @@ const prismaClientSingleton = () => {
   })
 }
 
-const prisma = globalThis.prisma ?? prismaClientSingleton()
+export function getPrismaClient(): PrismaClient {
+  if (!globalThis.prisma) {
+    globalThis.prisma = prismaClientSingleton()
+  }
 
-if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma
+  return globalThis.prisma
 }
+
+const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = getPrismaClient()
+    const value = Reflect.get(client, prop, receiver)
+    return typeof value === 'function' ? value.bind(client) : value
+  },
+})
 
 export default prisma

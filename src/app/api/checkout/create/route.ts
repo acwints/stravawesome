@@ -1,8 +1,9 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/config';
-import { POLAR_CONFIG } from '@/lib/polar';
+import { isPolarConfigured } from '@/lib/polar';
 import { logger } from '@/lib/logger';
 import { successResponse, ErrorResponses, withErrorHandling } from '@/lib/api-response';
+import { createBillingCheckout } from '@/lib/billing';
 
 export async function POST() {
   return withErrorHandling(async () => {
@@ -16,26 +17,37 @@ export async function POST() {
       return ErrorResponses.unauthorized();
     }
 
-    // Check if Polar is configured
-    if (!POLAR_CONFIG.priceId) {
+    if (!isPolarConfigured()) {
       logger.error('Polar.sh not configured');
       return ErrorResponses.internalError('Payment system not configured. Please contact support.');
     }
 
     try {
-      // Create Polar checkout URL with query parameters
-      const checkoutUrl = new URL('https://polar.sh/checkout');
-      checkoutUrl.searchParams.set('price', POLAR_CONFIG.priceId);
-      checkoutUrl.searchParams.set('email', session.user.email);
-      checkoutUrl.searchParams.set('success_url', `${process.env.NEXTAUTH_URL}/dashboard?checkout=success`);
+      const checkout = await createBillingCheckout({
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+      });
 
-      // Add metadata via custom fields if needed
-      checkoutUrl.searchParams.set('metadata[userId]', session.user.id);
+      if (!checkout.id || !checkout.url) {
+        logger.error('Polar checkout response missing id or url', undefined, {
+          userId: session.user.id,
+          hasId: Boolean(checkout.id),
+          hasUrl: Boolean(checkout.url),
+        });
+        return ErrorResponses.internalError('Failed to create checkout session');
+      }
 
       const duration = Date.now() - startTime;
-      logger.apiResponse('POST', '/api/checkout/create', 200, duration);
+      logger.apiResponse('POST', '/api/checkout/create', 200, duration, {
+        checkoutId: checkout.id,
+      });
 
-      return successResponse({ url: checkoutUrl.toString() });
+      return successResponse({
+        url: checkout.url,
+        checkoutId: checkout.id,
+        expiresAt: checkout.expiresAt?.toISOString?.() || checkout.expiresAt || null,
+      });
     } catch (error) {
       logger.error('Error creating checkout URL', error);
       return ErrorResponses.internalError('Failed to create checkout session');

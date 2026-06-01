@@ -1,7 +1,8 @@
 import { getServerSession } from 'next-auth';
 import { NextResponse } from 'next/server';
 import { authOptions } from '../../auth/config';
-import { polar, POLAR_CONFIG } from '@/lib/polar';
+import { isPolarConfigured } from '@/lib/polar';
+import { createBillingPortalUrl, fallbackBillingPortalUrl } from '@/lib/billing';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { ErrorResponses, withErrorHandling } from '@/lib/api-response';
@@ -29,17 +30,14 @@ export async function GET() {
     }
 
     // If Polar SDK is configured, try to create a pre-authenticated session
-    if (polar && POLAR_CONFIG.organizationId) {
+    if (isPolarConfigured()) {
       try {
-        // Create a customer session for pre-authenticated portal access
-        const customerSession = await polar.customerSessions.create({
-          customerId: subscription.polarSubscriptionId,
-        });
+        const customerPortalUrl = await createBillingPortalUrl(session.user.id);
 
-        if (customerSession.customerPortalUrl) {
+        if (customerPortalUrl) {
           const duration = Date.now() - startTime;
           logger.apiResponse('GET', '/api/subscription/portal', 302, duration);
-          return NextResponse.redirect(customerSession.customerPortalUrl);
+          return NextResponse.redirect(customerPortalUrl);
         }
       } catch (error) {
         // If SDK method fails, fall back to direct portal URL
@@ -53,7 +51,7 @@ export async function GET() {
     }
 
     // Fallback: Direct portal URL (user will need to enter email)
-    const portalUrl = `https://polar.sh/${POLAR_CONFIG.organizationId}/portal`;
+    const portalUrl = fallbackBillingPortalUrl();
 
     const duration = Date.now() - startTime;
     logger.apiResponse('GET', '/api/subscription/portal', 302, duration);

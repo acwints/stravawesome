@@ -4,6 +4,7 @@ import { authOptions } from '../../auth/config';
 import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { stravaOAuthUrl } from '@/lib/strava-api';
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Exchange code for token
-    const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
+    const tokenResponse = await fetch(stravaOAuthUrl('token'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

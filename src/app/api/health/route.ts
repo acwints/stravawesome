@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { stravaApiUrl } from '@/lib/strava-api';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,7 @@ export async function GET() {
   }
 
   // Check that required env vars are present (without exposing values)
-  const requiredEnvVars = ['NEXTAUTH_SECRET', 'NEXTAUTH_URL', 'STRAVA_CLIENT_ID'];
+  const requiredEnvVars = ['NEXTAUTH_SECRET', 'NEXTAUTH_URL', 'STRAVA_CLIENT_ID', 'STRAVA_CLIENT_SECRET'];
   const missingEnvVars = requiredEnvVars.filter(v => !process.env[v]);
   if (missingEnvVars.length > 0) {
     healthy = false;
@@ -50,7 +51,7 @@ export async function GET() {
   // Check Strava API reachability
   try {
     const stravaStart = Date.now();
-    const stravaResponse = await fetch('https://www.strava.com/api/v3/', {
+    const stravaResponse = await fetch(stravaApiUrl('/'), {
       method: 'GET',
       signal: AbortSignal.timeout(5000),
     });

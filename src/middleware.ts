@@ -40,7 +40,7 @@ export function middleware(request: NextRequest) {
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
     img-src 'self' blob: data: https: https://lh3.googleusercontent.com https://cdnjs.cloudflare.com;
     font-src 'self' https://fonts.gstatic.com;
-    connect-src 'self' https://accounts.google.com https://www.strava.com https://api.openai.com https://*.supabase.co;
+    connect-src 'self' https://accounts.google.com https://www.strava.com https://www.api-v3.strava.com https://api.openai.com;
     frame-src 'self' https://accounts.google.com;
     base-uri 'self';
     form-action 'self';

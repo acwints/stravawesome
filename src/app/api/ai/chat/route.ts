@@ -9,12 +9,17 @@ import { rateLimiter, RateLimits, getClientIdentifier } from '@/lib/rate-limit';
 import { headers } from 'next/headers';
 import { sanitizeString } from '@/lib/validation';
 import OpenAI from 'openai';
+import type { StravaActivity } from '@/types';
 
-validateEnvVars(['OPENAI_API_KEY']);
+let openai: OpenAI | null = null;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAIClient() {
+  validateEnvVars(['OPENAI_API_KEY']);
+  openai ??= new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  return openai;
+}
 
 export async function POST(request: NextRequest) {
   return withErrorHandling(async () => {
@@ -76,34 +81,12 @@ export async function POST(request: NextRequest) {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const unixTimestamp = Math.floor(thirtyDaysAgo.getTime() / 1000);
 
-    logger.externalApi('Strava', `GET /athlete/activities (after=${unixTimestamp})`);
-
-    const controller = new AbortController();
-    const fetchTimeout = setTimeout(() => controller.abort(), 15_000);
-
-    let activitiesResponse: Response;
-    try {
-      activitiesResponse = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?after=${unixTimestamp}&per_page=100`,
-        {
-          headers: {
-            Authorization: `Bearer ${tokenResult.accessToken}`,
-          },
-          signal: controller.signal,
-        }
-      );
-    } finally {
-      clearTimeout(fetchTimeout);
-    }
-
-    if (!activitiesResponse.ok) {
-      logger.error('Failed to fetch activities for AI chat', undefined, {
-        status: activitiesResponse.status
-      });
-      return ErrorResponses.internalError('Failed to fetch activities from Strava');
-    }
-
-    const activities = await activitiesResponse.json();
+    const activities = await stravaClient.fetchActivities(tokenResult.accessToken, 100, {
+      cacheKey: `activities:${session.user.id}:ai_chat`,
+      ttlMs: 5 * 60 * 1000,
+      after: unixTimestamp,
+      timeoutMs: 15_000,
+    }) as StravaActivity[];
     logger.info(`Fetched ${activities.length} activities for AI chat`, { userId: session.user.id });
 
     // Get user's goals
@@ -114,25 +97,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Prepare training data summary for AI
-    interface StravaActivity {
-      name: string;
-      type: string;
-      distance: number;
-      moving_time: number;
-      start_date: string;
-      average_speed?: number;
-      total_elevation_gain?: number;
-      average_heartrate?: number;
-      max_heartrate?: number;
-    }
-
     const trainingData = {
       activities: activities.map((activity: StravaActivity) => ({
-        name: activity.name,
+        name: activity.name ?? 'Unnamed activity',
         type: activity.type,
         distance: activity.distance,
-        moving_time: activity.moving_time,
+        moving_time: activity.moving_time ?? 0,
         start_date: activity.start_date,
         average_speed: activity.average_speed,
         total_elevation_gain: activity.total_elevation_gain,
@@ -166,18 +136,18 @@ ${goals.map(goal => `- ${goal.activityType}: ${goal.targetDistance} miles`).join
 
 Recent Activities (last 10):
 ${activities.slice(0, 10).map((activity: StravaActivity) =>
-  `- ${activity.name} (${activity.type}): ${(activity.distance / 1609.34).toFixed(2)} miles on ${new Date(activity.start_date).toLocaleDateString()}`
+  `- ${activity.name ?? 'Unnamed activity'} (${activity.type}): ${(activity.distance / 1609.34).toFixed(2)} miles on ${new Date(activity.start_date).toLocaleDateString()}`
 ).join('\n')}
 
 Please provide helpful, encouraging, and insightful analysis based on this training data. Be specific about patterns, progress, and suggestions for improvement.`;
 
     logger.debug('Calling OpenAI API', { model: 'gpt-4', messageLength: message.length });
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: "gpt-4",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: message }
+        { role: "user", content: sanitizedMessage }
       ],
       max_tokens: 1000,
       temperature: 0.7,

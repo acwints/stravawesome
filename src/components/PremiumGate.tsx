@@ -21,9 +21,7 @@ export default function PremiumGate({
 
   return (
     <div className={`relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 ${className}`}>
-      <div className="pointer-events-none select-none blur-sm opacity-30 min-h-[120px]">
-        {children}
-      </div>
+      <div className="pointer-events-none select-none min-h-[120px] bg-gray-50 dark:bg-gray-800/70" />
       <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-[2px]">
         <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-100/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/50">

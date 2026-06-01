@@ -1,8 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
   images: {
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/a/**',
+      },
       {
         protocol: 'https',
         hostname: 'dgtzuqphqg23d.cloudfront.net',
@@ -20,6 +26,7 @@ const nextConfig: NextConfig = {
         hostname: '*.cdninstagram.com',
       },
     ],
+    formats: ['image/avif', 'image/webp'],
   },
 };
 

@@ -128,13 +128,6 @@ export default function PhotoGallery() {
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {allPhotos.map(({ photo, activityName }) => {
-            console.log('[PhotoGallery] Rendering photo:', {
-              unique_id: photo.unique_id,
-              url600: photo.urls[600],
-              url100: photo.urls[100],
-              source: photo.source,
-              activityName,
-            });
             return (
               <div
                 key={photo.unique_id}

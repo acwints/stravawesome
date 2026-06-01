@@ -7,6 +7,9 @@ import prisma from "@/lib/prisma";
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
+const stravaClientId = process.env.STRAVA_CLIENT_ID;
+const stravaClientSecret = process.env.STRAVA_CLIENT_SECRET;
+
 const providers: NextAuthOptions['providers'] = [];
 
 if (googleClientId && googleClientSecret) {
@@ -25,15 +28,17 @@ if (googleClientId && googleClientSecret) {
   );
 }
 
-providers.push(
-  StravaProvider({
-    clientId: process.env.STRAVA_CLIENT_ID!,
-    clientSecret: process.env.STRAVA_CLIENT_SECRET!,
-    authorization: {
-      params: { scope: 'read,activity:read_all,profile:read_all' },
-    },
-  })
-);
+if (stravaClientId && stravaClientSecret) {
+  providers.push(
+    StravaProvider({
+      clientId: stravaClientId,
+      clientSecret: stravaClientSecret,
+      authorization: {
+        params: { scope: 'activity:read_all' },
+      },
+    })
+  );
+}
 
 export const authOptions: NextAuthOptions = {
   debug: process.env.NEXTAUTH_DEBUG === 'true',
@@ -105,4 +110,4 @@ export const authOptions: NextAuthOptions = {
       },
     },
   },
-}; 
+};
