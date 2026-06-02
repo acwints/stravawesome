@@ -3,6 +3,10 @@ import { Webhook, WebhookVerificationError } from 'standardwebhooks';
 import { logger } from '@/lib/logger';
 import { PolarWebhookPayload, processPolarWebhook } from '@/lib/billing';
 
+function standardWebhookSecret(secret: string): string {
+  return secret.startsWith('whsec_') ? secret : Buffer.from(secret, 'utf8').toString('base64');
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Get the raw body for signature verification
@@ -20,7 +24,10 @@ export async function POST(request: NextRequest) {
       };
 
       try {
-        payload = new Webhook(webhookSecret).verify(requestBody, webhookHeaders) as PolarWebhookPayload;
+        payload = new Webhook(standardWebhookSecret(webhookSecret)).verify(
+          requestBody,
+          webhookHeaders
+        ) as PolarWebhookPayload;
       } catch (error) {
         if (error instanceof WebhookVerificationError) {
           logger.warn('Webhook signature verification failed', {
