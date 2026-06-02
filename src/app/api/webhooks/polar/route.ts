@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateEvent, WebhookVerificationError } from '@polar-sh/sdk/webhooks';
+import { Webhook, WebhookVerificationError } from 'standardwebhooks';
 import { logger } from '@/lib/logger';
 import { PolarWebhookPayload, processPolarWebhook } from '@/lib/billing';
 
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       };
 
       try {
-        payload = validateEvent(requestBody, webhookHeaders, webhookSecret) as PolarWebhookPayload;
+        payload = new Webhook(webhookSecret).verify(requestBody, webhookHeaders) as PolarWebhookPayload;
       } catch (error) {
         if (error instanceof WebhookVerificationError) {
           logger.warn('Webhook signature verification failed', {
