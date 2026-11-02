@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Metric-matched Arial fallback for Inter (values next/font/google generated),
+   used by src/app/fonts/inter.ts until the web font swaps in. */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial");
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

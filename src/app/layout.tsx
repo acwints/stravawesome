@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { inter } from "./fonts/inter";
 import "./globals.css";
 import { NextAuthProvider } from "@/providers/NextAuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
@@ -8,8 +8,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/config";
 import { Toaster } from 'sonner';
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "StravAwesome - Track Your Training Progress",
